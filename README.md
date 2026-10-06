@@ -175,3 +175,46 @@ Supabase의 notes 테이블은 authenticated 역할에 SELECT, INSERT, UPDATE, D
 과거 Git 커밋과 과거 Vercel 배포에 존재했던 공개 상태는 현재 파일을 수정하는 것만으로 삭제되지 않습니다.
 
 현재 저장점에서는 정적 `/data.json`에 메모 원문을 넣지 않고 인증된 자료 요청은 서버 API를 통해 처리하며, API 소유권 검사와 Supabase RLS를 함께 적용합니다.
+
+## 5단계 · 자료 요청을 서버 한곳으로 모읍니다
+
+현재 상태를 BYTE BACK 방어전 5단계 저장점으로 기록합니다.
+
+### 구현한 기능
+
+- 브라우저의 메모 읽기, 추가, 수정, 삭제는 Vercel `/api/notes` 서버 함수를 통해 처리합니다.
+- Supabase Auth 로그인 기능은 유지합니다.
+- `public.notes` 테이블의 PUBLIC, anon, authenticated 직접 권한을 회수했습니다.
+- 서버 함수의 로그인 검증과 `owner_id` 소유자 검사는 그대로 유지합니다.
+- Supabase 원본 자료 API는 공개 키만으로 직접 조회할 수 없습니다.
+- `aleph.config.json`의 `originalApiUrl`에는 쿼리 없는 Supabase notes 원본 API 경로를 기록합니다.
+
+### 허용된 서버 API
+
+- `GET /api/notes`
+- `POST /api/notes`
+- `GET /api/notes/:id`
+- `PUT /api/notes/:id`
+- `DELETE /api/notes/:id`
+
+### 직접 확인한 동작
+
+A 계정에서 메모 조회, 추가, 수정, 삭제가 서버 함수를 통해 정상 동작합니다.
+
+B 계정에서는 B가 소유한 메모만 표시되고 A의 메모는 표시되지 않습니다.
+
+로그아웃 상태에서는 메모 자료에 접근할 수 없습니다.
+
+Supabase 원본 `notes` REST API를 공개 키만 사용해 직접 요청하면 `401 Unauthorized`와 `permission denied for table notes`가 반환됩니다.
+
+`PUBLIC`, `anon`, `authenticated`의 `public.notes` 직접 테이블 권한을 확인한 결과 모두 회수된 상태입니다.
+
+### 다시 실행하는 방법
+
+로컬 공개 파일 빌드는 다음 명령으로 확인합니다.
+
+`npm run build -- --local`
+
+배포 후 `/aleph.json`에서 `step`이 5이고 `originalApiUrl`과 `allowedRoutes`가 올바르게 기록되어 있는지 확인합니다.
+
+현재 메모 데이터 접근은 Vercel 서버 API로 모으고 Supabase 원본 테이블에 대한 브라우저 역할의 직접 접근은 허용하지 않습니다.
