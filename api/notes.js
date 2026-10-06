@@ -122,17 +122,22 @@ export default async function handler(request, response) {
       content: body.body.trim()
     });
 
-  if (error) {
-    if (error.code === '23505') {
-      return response.status(409).json({
-        error: 'NOTE_ID_CONFLICT'
-      });
-    }
+if (error.code === '23505') {
+  return response.status(409).json({
+    error: 'NOTE_ID_CONFLICT'
+  });
+}
 
-    return response.status(500).json({
-      error: 'NOTE_CREATE_FAILED'
-    });
-  }
+console.error('NOTE_CREATE_FAILED', {
+  code: error.code,
+  message: error.message,
+  details: error.details,
+  hint: error.hint
+});
+
+return response.status(500).json({
+  error: 'NOTE_CREATE_FAILED'
+});
 
   return response.status(201).json({
     id
