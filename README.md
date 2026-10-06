@@ -23,3 +23,17 @@
 [AGENTS.md](AGENTS.md)를 먼저 읽히고 한 번에 한 제작 단위만 요청하세요. 2단계부터는 자료 보호를 구현할 때 `public/data.json`을 복사하는 1단계 빌드 흐름도 함께 바꿔야 합니다. 3단계 이후의 로그인, 허용 경로, 5단계의 원본 API 주소, 6단계 이후 정책 규칙은 해당 단계 원고와 계약에 맞춰 추가합니다. 비밀번호·토큰·서버 전용 키·실제 학생 기록을 코드, Git, 제출 묶음에 넣지 않습니다.
 
 `src/decider.mjs`와 `src/detect.mjs`의 로컬 시험은 반 엔진이나 운영 심판의 결과가 아닙니다. 1단계 이후 제출 묶음 계약 `aleph.defense.submission.v2`는 `scripts/bundle.mjs`에 남아 있으며, 코딩 도구가 해당 단계의 최신 배포 주소와 Git 원격을 맞춘 뒤 사용합니다.
+
+## 2단계 · 자료를 코드 밖으로 옮깁니다
+
+- 공개 정적 `data.json`에서는 가상 메모 본문을 제거했습니다.
+- 학습용 Supabase `notes` 테이블에 가상 메모 4건을 저장하며 `owner_id uuid` 칸을 두고 RLS를 활성화합니다.
+- `anon`과 `authenticated`에는 테이블 직접 읽기 권한을 부여하지 않습니다.
+- `/api/notes`는 서버 환경변수를 사용해 Supabase 자료를 읽도록 구현했습니다. 2단계에서는 아직 사용자 인증을 적용하지 않습니다.
+- 이전 Git 커밋과 Vercel 배포 이력에 남아 있던 공개 가상 메모는 이 변경으로 삭제되지 않습니다.
+
+로컬 정적 빌드는 다음 명령으로 확인합니다.
+
+`npm run build -- --local`
+
+실제 Supabase 연결은 Vercel의 서버 환경변수 `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`를 사용하며, 비밀값은 저장소에 기록하지 않습니다.
