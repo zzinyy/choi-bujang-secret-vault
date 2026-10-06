@@ -128,12 +128,6 @@ if (error.code === '23505') {
   });
 }
 
-console.error('NOTE_CREATE_FAILED', {
-  code: error.code,
-  message: error.message,
-  details: error.details,
-  hint: error.hint
-});
 
 return response.status(500).json({
   error: 'NOTE_CREATE_FAILED'
