@@ -253,13 +253,7 @@
   </main>
 
   <script type="module">
-    import { createClient }
-      from 'https://esm.sh/@supabase/supabase-js@2.117.2';
-
-    const supabase = createClient(
-      'https://uzwjgtcmibhjjjsmsyul.supabase.co',
-      'sb_publishable_JOn1K8An9CYO59BlSRPLzA_2oo8vmBg'
-    );
+    const SESSION_KEY = 'byte-back-session';
 
     const loggedOut =
       document.querySelector('#logged-out');
@@ -314,12 +308,37 @@
 
     let currentSession = null;
 
+    function saveSession(session) {
+      if (session?.access_token && session?.refresh_token) {
+        sessionStorage.setItem(
+          SESSION_KEY,
+          JSON.stringify(session)
+        );
+        return;
+      }
+
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+
+    function readStoredSession() {
+      try {
+        return JSON.parse(
+          sessionStorage.getItem(SESSION_KEY) || 'null'
+        );
+      } catch {
+        sessionStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+    }
 
     function showSession(session) {
       currentSession = session;
 
       const isLoggedIn =
-        Boolean(session?.user && session?.access_token);
+        Boolean(
+          session?.user &&
+          session?.access_token
+        );
 
       loggedOut.hidden = isLoggedIn;
       loggedIn.hidden = !isLoggedIn;
@@ -334,15 +353,14 @@
       }
     }
 
-
     function showNoteMessage(message) {
-      const item = document.createElement('li');
+      const item =
+        document.createElement('li');
 
       item.textContent = message;
 
       list.replaceChildren(item);
     }
-
 
     function resetNoteForm() {
       noteForm.reset();
@@ -352,7 +370,6 @@
       cancelEditButton.hidden = true;
       noteMessage.textContent = '';
     }
-
 
     function authorizationHeaders() {
       if (!currentSession?.access_token) {
@@ -365,7 +382,6 @@
       };
     }
 
-
     async function readJson(response) {
       try {
         return await response.json();
@@ -373,7 +389,6 @@
         return {};
       }
     }
-
 
     async function loadNotes(session = currentSession) {
       if (!session?.access_token) {
@@ -384,19 +399,22 @@
       }
 
       try {
-        const response = await fetch('/api/notes', {
-          cache: 'no-store',
-          headers: {
-            Authorization:
-              `Bearer ${session.access_token}`
-          }
-        });
+        const response =
+          await fetch('/api/notes', {
+            cache: 'no-store',
+            headers: {
+              Authorization:
+                `Bearer ${session.access_token}`
+            }
+          });
 
-        const data = await readJson(response);
+        const data =
+          await readJson(response);
 
         if (!response.ok) {
           throw new Error(
-            data.error || '메모를 읽을 수 없습니다.'
+            data.error ||
+            '메모를 읽을 수 없습니다.'
           );
         }
 
@@ -413,127 +431,135 @@
           return;
         }
 
-        const items = data.notes.map((note) => {
-          const item =
-            document.createElement('li');
+        const items =
+          data.notes.map((note) => {
+            const item =
+              document.createElement('li');
 
-          const title =
-            document.createElement('strong');
+            const title =
+              document.createElement('strong');
 
-          const content =
-            document.createElement('span');
+            const content =
+              document.createElement('span');
 
-          const actions =
-            document.createElement('div');
+            const actions =
+              document.createElement('div');
 
-          const editButton =
-            document.createElement('button');
+            const editButton =
+              document.createElement('button');
 
-          const deleteButton =
-            document.createElement('button');
+            const deleteButton =
+              document.createElement('button');
 
-          title.textContent = note.title;
-          content.textContent = note.body;
+            title.textContent = note.title;
+            content.textContent = note.body;
 
-          actions.className = 'note-actions';
+            actions.className =
+              'note-actions';
 
-          editButton.type = 'button';
-          editButton.textContent = '수정';
+            editButton.type = 'button';
+            editButton.textContent = '수정';
 
-          deleteButton.type = 'button';
-          deleteButton.textContent = '삭제';
+            deleteButton.type = 'button';
+            deleteButton.textContent = '삭제';
 
-          editButton.addEventListener(
-            'click',
-            () => {
-              noteId.value = note.id;
-              noteTitle.value = note.title;
-              noteBody.value = note.body;
+            editButton.addEventListener(
+              'click',
+              () => {
+                noteId.value = note.id;
+                noteTitle.value = note.title;
+                noteBody.value = note.body;
 
-              editorTitle.textContent = '메모 수정';
-              saveNoteButton.textContent = '수정 저장';
-              cancelEditButton.hidden = false;
-              noteMessage.textContent = '';
+                editorTitle.textContent =
+                  '메모 수정';
 
-              noteTitle.focus();
-            }
-          );
+                saveNoteButton.textContent =
+                  '수정 저장';
 
-          deleteButton.addEventListener(
-            'click',
-            async () => {
-              const confirmed = window.confirm(
-                '이 메모를 삭제하시겠습니까?'
-              );
+                cancelEditButton.hidden = false;
+                noteMessage.textContent = '';
 
-              if (!confirmed) {
-                return;
+                noteTitle.focus();
               }
+            );
 
-              const headers = authorizationHeaders();
-
-              if (!headers) {
-                noteMessage.textContent =
-                  '로그인이 필요합니다.';
-                return;
-              }
-
-              deleteButton.disabled = true;
-
-              try {
-                const response = await fetch(
-                  `/api/notes/${encodeURIComponent(note.id)}`,
-                  {
-                    method: 'DELETE',
-                    headers
-                  }
-                );
-
-                const data = await readJson(response);
-
-                if (!response.ok) {
-                  throw new Error(
-                    data.error || '메모 삭제에 실패했습니다.'
+            deleteButton.addEventListener(
+              'click',
+              async () => {
+                const confirmed =
+                  window.confirm(
+                    '이 메모를 삭제하시겠습니까?'
                   );
+
+                if (!confirmed) {
+                  return;
                 }
 
-                resetNoteForm();
+                const headers =
+                  authorizationHeaders();
 
-                noteMessage.textContent =
-                  '메모를 삭제했습니다.';
+                if (!headers) {
+                  noteMessage.textContent =
+                    '로그인이 필요합니다.';
+                  return;
+                }
 
-                await loadNotes();
+                deleteButton.disabled = true;
 
-              } catch (error) {
-                noteMessage.textContent =
-                  error.message;
-              } finally {
-                deleteButton.disabled = false;
+                try {
+                  const response =
+                    await fetch(
+                      `/api/notes/${encodeURIComponent(note.id)}`,
+                      {
+                        method: 'DELETE',
+                        headers
+                      }
+                    );
+
+                  const data =
+                    await readJson(response);
+
+                  if (!response.ok) {
+                    throw new Error(
+                      data.error ||
+                      '메모 삭제에 실패했습니다.'
+                    );
+                  }
+
+                  resetNoteForm();
+
+                  noteMessage.textContent =
+                    '메모를 삭제했습니다.';
+
+                  await loadNotes();
+                } catch (error) {
+                  noteMessage.textContent =
+                    error.message;
+                } finally {
+                  deleteButton.disabled = false;
+                }
               }
-            }
-          );
+            );
 
-          actions.append(
-            editButton,
-            deleteButton
-          );
+            actions.append(
+              editButton,
+              deleteButton
+            );
 
-          item.append(
-            title,
-            content,
-            actions
-          );
+            item.append(
+              title,
+              content,
+              actions
+            );
 
-          return item;
-        });
+            return item;
+          });
 
         list.replaceChildren(...items);
-
       } catch (error) {
         showNoteMessage(error.message);
       }
     }
-
 
     loginForm.addEventListener(
       'submit',
@@ -549,62 +575,99 @@
         const password =
           document.querySelector('#password').value;
 
-        const { data, error } =
-          await supabase.auth.signInWithPassword({
-            email,
-            password
-          });
+        try {
+          const response =
+            await fetch('/api/auth-login', {
+              method: 'POST',
+              headers: {
+                'Content-Type':
+                  'application/json'
+              },
+              body: JSON.stringify({
+                email,
+                password
+              })
+            });
 
-        loginButton.disabled = false;
+          const data =
+            await readJson(response);
 
-        if (error) {
+          if (
+            !response.ok ||
+            !data.session
+          ) {
+            throw new Error(
+              data.error ||
+              'LOGIN_FAILED'
+            );
+          }
+
+          loginForm.reset();
+
+          saveSession(data.session);
+          showSession(data.session);
+
+          await loadNotes(data.session);
+
+          authMessage.textContent =
+            '로그인되었습니다.';
+        } catch (error) {
           authMessage.textContent =
             `로그인 실패: ${error.message}`;
-          return;
+        } finally {
+          loginButton.disabled = false;
         }
-
-        loginForm.reset();
-
-        showSession(data.session);
-
-        await loadNotes(data.session);
-
-        authMessage.textContent =
-          '로그인되었습니다.';
       }
     );
-
 
     logoutButton.addEventListener(
       'click',
       async () => {
         authMessage.textContent = '';
 
-        const { error } =
-          await supabase.auth.signOut();
+        const headers =
+          authorizationHeaders();
 
-        if (error) {
+        try {
+          if (headers) {
+            const response =
+              await fetch('/api/auth-logout', {
+                method: 'POST',
+                headers
+              });
+
+            if (!response.ok) {
+              const data =
+                await readJson(response);
+
+              throw new Error(
+                data.error ||
+                'LOGOUT_FAILED'
+              );
+            }
+          }
+
+          saveSession(null);
+          showSession(null);
+
+          await loadNotes(null);
+
+          authMessage.textContent =
+            '로그아웃되었습니다.';
+        } catch (error) {
           authMessage.textContent =
             `로그아웃 실패: ${error.message}`;
-          return;
         }
-
-        showSession(null);
-
-        await loadNotes(null);
-
-        authMessage.textContent =
-          '로그아웃되었습니다.';
       }
     );
-
 
     noteForm.addEventListener(
       'submit',
       async (event) => {
         event.preventDefault();
 
-        const headers = authorizationHeaders();
+        const headers =
+          authorizationHeaders();
 
         if (!headers) {
           noteMessage.textContent =
@@ -612,8 +675,11 @@
           return;
         }
 
-        const title = noteTitle.value.trim();
-        const body = noteBody.value.trim();
+        const title =
+          noteTitle.value.trim();
+
+        const body =
+          noteBody.value.trim();
 
         if (!title || !body) {
           noteMessage.textContent =
@@ -621,32 +687,39 @@
           return;
         }
 
-        const editingId = noteId.value;
+        const editingId =
+          noteId.value;
 
         saveNoteButton.disabled = true;
         noteMessage.textContent = '';
 
         try {
-          const response = await fetch(
-            editingId
-              ? `/api/notes/${encodeURIComponent(editingId)}`
-              : '/api/notes',
-            {
-              method: editingId ? 'PUT' : 'POST',
+          const response =
+            await fetch(
+              editingId
+                ? `/api/notes/${encodeURIComponent(editingId)}`
+                : '/api/notes',
+              {
+                method:
+                  editingId
+                    ? 'PUT'
+                    : 'POST',
 
-              headers: {
-                ...headers,
-                'Content-Type': 'application/json'
-              },
+                headers: {
+                  ...headers,
+                  'Content-Type':
+                    'application/json'
+                },
 
-              body: JSON.stringify({
-                title,
-                body
-              })
-            }
-          );
+                body: JSON.stringify({
+                  title,
+                  body
+                })
+              }
+            );
 
-          const data = await readJson(response);
+          const data =
+            await readJson(response);
 
           if (!response.ok) {
             throw new Error(
@@ -661,12 +734,12 @@
 
           resetNoteForm();
 
-          noteMessage.textContent = editingId
-            ? '메모를 수정했습니다.'
-            : '메모를 추가했습니다.';
+          noteMessage.textContent =
+            editingId
+              ? '메모를 수정했습니다.'
+              : '메모를 추가했습니다.';
 
           await loadNotes();
-
         } catch (error) {
           noteMessage.textContent =
             error.message;
@@ -676,7 +749,6 @@
       }
     );
 
-
     cancelEditButton.addEventListener(
       'click',
       () => {
@@ -684,23 +756,54 @@
       }
     );
 
+    async function restoreSession() {
+      const storedSession =
+        readStoredSession();
 
-    const {
-      data: { session }
-    } = await supabase.auth.getSession();
-
-    showSession(session);
-
-    await loadNotes(session);
-
-
-    supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        showSession(nextSession);
-
-        void loadNotes(nextSession);
+      if (!storedSession?.refresh_token) {
+        showSession(null);
+        await loadNotes(null);
+        return;
       }
-    );
+
+      try {
+        const response =
+          await fetch('/api/auth-refresh', {
+            method: 'POST',
+            headers: {
+              'Content-Type':
+                'application/json'
+            },
+            body: JSON.stringify({
+              refresh_token:
+                storedSession.refresh_token
+            })
+          });
+
+        const data =
+          await readJson(response);
+
+        if (
+          !response.ok ||
+          !data.session
+        ) {
+          throw new Error(
+            'REFRESH_FAILED'
+          );
+        }
+
+        saveSession(data.session);
+        showSession(data.session);
+
+        await loadNotes(data.session);
+      } catch {
+        saveSession(null);
+        showSession(null);
+        await loadNotes(null);
+      }
+    }
+
+    await restoreSession();
   </script>
 </body>
 </html>
