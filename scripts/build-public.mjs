@@ -15,7 +15,6 @@ await mkdir(resolve(root, 'public'), { recursive: true });
 
 // 2단계부터 메모 원문은 정적 파일에 포함하지 않습니다.
 const publicData = {
-  sampleMarker: config.sampleMarker,
   notes: []
 };
 
