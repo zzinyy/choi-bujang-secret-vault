@@ -9,9 +9,9 @@ export default async function handler(request, response) {
   }
 
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
+  if (!supabaseUrl || !supabaseSecretKey) {
     return response.status(500).json({
       error: 'SUPABASE_SERVER_CONFIG_MISSING'
     });
@@ -19,7 +19,7 @@ export default async function handler(request, response) {
 
   const supabase = createClient(
     supabaseUrl,
-    supabaseServiceRoleKey,
+    supabaseSecretKey,
     {
       auth: {
         persistSession: false,

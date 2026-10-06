@@ -29,11 +29,23 @@
 - 공개 정적 `data.json`에서는 가상 메모 본문을 제거했습니다.
 - 학습용 Supabase `notes` 테이블에 가상 메모 4건을 저장하며 `owner_id uuid` 칸을 두고 RLS를 활성화합니다.
 - `anon`과 `authenticated`에는 테이블 직접 읽기 권한을 부여하지 않습니다.
-- `/api/notes`는 서버 환경변수를 사용해 Supabase 자료를 읽도록 구현했습니다. 2단계에서는 아직 사용자 인증을 적용하지 않습니다.
+- 화면은 정적 `/data.json` 대신 Vercel 서버 함수 `/api/notes`를 호출해 Supabase의 가상 메모를 읽습니다.
+- `/api/notes`는 `SUPABASE_URL`과 서버 전용 `SUPABASE_SECRET_KEY`를 Vercel 환경변수에서 읽습니다.
+- 서버 전용 키 값은 브라우저 파일, API 응답, 로그 또는 Git 저장소에 포함하지 않습니다.
 - 이전 Git 커밋과 Vercel 배포 이력에 남아 있던 공개 가상 메모는 이 변경으로 삭제되지 않습니다.
 
-로컬 정적 빌드는 다음 명령으로 확인합니다.
+### 현재 남아 있는 약점
+
+2단계의 `/api/notes` 함수에는 아직 사용자 인증이 적용되지 않았습니다.
+
+따라서 정적 `/data.json`에서는 메모가 제거되었지만 `/api/notes`는 아직 공개 주소입니다. 주소를 아는 사용자는 로그인 없이 서버 함수를 직접 호출하여 가상 메모를 읽을 수 있습니다.
+
+이 공개 API 접근 문제는 다음 인증 단계에서 보호해야 합니다.
+
+### 로컬 빌드 확인
+
+다음 명령으로 정적 빌드를 확인합니다.
 
 `npm run build -- --local`
 
-실제 Supabase 연결은 Vercel의 서버 환경변수 `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`를 사용하며, 비밀값은 저장소에 기록하지 않습니다.
+실제 Supabase 연결은 Vercel의 서버 환경변수 `SUPABASE_URL`과 `SUPABASE_SECRET_KEY`를 사용하며, 비밀값은 저장소에 기록하지 않습니다.
