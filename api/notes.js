@@ -35,7 +35,9 @@ export default async function handler(request, response) {
 
   if (error) {
     return response.status(500).json({
-      error: 'NOTES_READ_FAILED'
+      error: 'NOTES_READ_FAILED',
+      code: error.code,
+      message: error.message
     });
   }
 
