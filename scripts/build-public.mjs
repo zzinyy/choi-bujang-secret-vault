@@ -7,8 +7,8 @@ const config = JSON.parse(
   await readFile(resolve(root, 'aleph.config.json'), 'utf8')
 );
 
-if (config.step !== 2) {
-  throw new Error('2단계 빌드에서는 aleph.config.json의 step이 2여야 합니다.');
+if (config.step !== 3) {
+  throw new Error('3단계 빌드에서는 aleph.config.json의 step이 3이어야 합니다.');
 }
 
 await mkdir(resolve(root, 'public'), { recursive: true });
