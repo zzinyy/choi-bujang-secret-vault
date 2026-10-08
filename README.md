@@ -218,3 +218,40 @@ Supabase 원본 `notes` REST API를 공개 키만 사용해 직접 요청하면 
 배포 후 `/aleph.json`에서 `step`이 5이고 `originalApiUrl`과 `allowedRoutes`가 올바르게 기록되어 있는지 확인합니다.
 
 현재 메모 데이터 접근은 Vercel 서버 API로 모으고 Supabase 원본 테이블에 대한 브라우저 역할의 직접 접근은 허용하지 않습니다.
+
+
+## 보너스 XDR-01 · 무차별 로그인 공격 탐지
+
+Wazuh 모의 경보 28건을 분석하여 MITRE ATT&CK T1110 기반으로 공격을 분류합니다.
+
+### 실행 방법
+
+```bash
+npm run xdr:run -- brute-force
+node xdr/brute-force/connect.mjs
+```
+
+### 시험 결과
+
+- 전체 경보: 28건
+- block: 10건
+- alert: 9건
+- record: 9건
+- 정상 이벤트 오차단: 0건
+
+### 주요 파일
+
+- `xdr/brute-force/read-alerts.mjs`: 경보 필드 추출
+- `xdr/brute-force/patterns.json`: 공격 패턴과 근거
+- `xdr/brute-force/decide.mjs`: 경보 분류
+- `xdr/brute-force/connect.mjs`: 차단 후보와 알림 생성
+- `xdr/brute-force/result.json`: 시험 결과
+
+### 구현 범위 및 제한
+
+- 시험용 Wazuh 경보를 사용합니다.
+- 명확한 공격은 차단 후보로 분류하고 애매한 시도는 알림으로 남깁니다.
+- 차단 후보에는 근거 경보 ID와 15분 만료 시각을 부여합니다.
+- 실제 Jev 서비스 호출은 구현되지 않았습니다.
+- 기존 ZTNA 판정기는 변경하지 않았으며, 실제 접근 차단 연동은 구현되지 않았습니다.
+- 시험 경보를 재생하면 차단 후보의 만료 시각이 새로 설정되므로 실제 운영용으로 사용해서는 안 됩니다.

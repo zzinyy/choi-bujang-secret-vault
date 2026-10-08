@@ -1,0 +1,21 @@
+
+{
+  "technique": "MITRE ATT&CK T1110",
+  "patterns": [
+    {
+      "name": "rapid-failures-single-ip",
+      "condition": "동일 출발 IP에서 5분 이내 로그인 실패가 10회 이상 발생",
+      "evidence": "MITRE ATT&CK T1110 - 짧은 시간에 반복되는 인증 실패는 무차별 대입 시도의 탐지 신호이다."
+    },
+    {
+      "name": "password-spraying",
+      "condition": "동일 출발 IP에서 10분 이내 서로 다른 계정 5개 이상에 로그인 실패가 발생하고 동일 비밀번호 사용이 확인됨",
+      "evidence": "MITRE ATT&CK T1110.003 - 여러 계정에 공통 비밀번호를 시도하는 Password Spraying 기법이다."
+    },
+    {
+      "name": "repeated-target-account",
+      "condition": "동일 계정에 대해 5분 이내 로그인 실패가 10회 이상 발생",
+      "evidence": "MITRE ATT&CK T1110 - 하나의 계정에 반복적으로 인증을 시도하는 무차별 대입 공격의 탐지 신호이다."
+    }
+  ]
+}
