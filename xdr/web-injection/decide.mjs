@@ -111,12 +111,15 @@ export async function decide(alert) {
   }
 
   // Wazuh가 주입 가능성을 보고한 단발성 경보
+    // 공격 여부가 확실하지 않은 단발성 웹 경보
+  // 차단하지 않고 알림으로 남긴다.
   if (
-    level >= 8 &&
-    /주입|삽입|injection|xss/i.test(description)
+    count >= 1 &&
+    level >= 5
   ) {
-    return makeResult(0.55, 'web-injection-suspected');
+    return makeResult(0.6, 'ambiguous-web-request');
   }
 
+  // 위험 수준이 낮은 정상 웹 요청
   return makeResult(0.1, 'normal-web-request');
 }
