@@ -1,12 +1,14 @@
 
-import { readFileSync } from 'node:fs';
-
-const patternFile = new URL('./patterns.json', import.meta.url);
-const { patterns } = JSON.parse(readFileSync(patternFile, 'utf8'));
+const PATTERN_NAMES = [
+  'rapid-failures-single-ip',
+  'password-spraying',
+  'repeated-target-account'
+];
 
 function patternName(name) {
-  return patterns.find((p) => p.name === name)?.name ?? name;
+  return PATTERN_NAMES.includes(name) ? name : name;
 }
+
 
 function result(confidence, reason) {
   const action =
