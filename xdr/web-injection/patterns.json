@@ -1,0 +1,20 @@
+
+{
+  "patterns": [
+    {
+      "name": "sql-injection",
+      "condition": "웹 요청의 URL 또는 입력 인자에 SQL 논리식, UNION SELECT, 데이터베이스 함수 등 주입을 의심할 만한 구문이 포함된 경우",
+      "evidence": "MITRE ATT&CK T1190: 외부 공개 애플리케이션의 입력 처리 취약점을 SQL 구문으로 악용하는 시도"
+    },
+    {
+      "name": "script-injection",
+      "condition": "웹 요청의 입력 인자에 script 태그, JavaScript 이벤트 핸들러 등 실행 가능한 스크립트 구문이 포함된 경우",
+      "evidence": "MITRE ATT&CK T1190: 외부 공개 애플리케이션의 입력 처리 취약점을 스크립트 삽입으로 악용하는 시도"
+    },
+    {
+      "name": "path-traversal",
+      "condition": "웹 요청 경로 또는 입력 인자에서 ../ 또는 인코딩된 상위 경로 이동 표현이 반복되는 경우",
+      "evidence": "MITRE ATT&CK T1190: 외부 공개 애플리케이션의 경로 검증 취약점을 이용해 허용된 디렉터리 밖으로 접근하려는 시도"
+    }
+  ]
+}
