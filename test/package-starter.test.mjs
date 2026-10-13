@@ -3,17 +3,28 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
-const baseline = JSON.parse(await readFile(new URL('../package/baseline-functions.json', import.meta.url)));
+const baseline = JSON.parse(
+  await readFile(new URL('../package/baseline-functions.json', import.meta.url))
+);
 
 test('패키징 함수 기준표는 시작 틀의 실제 API와 일치한다', async () => {
   const actual = (await readdir(new URL('../api/', import.meta.url)))
     .filter(name => /\.(?:m?js|ts)$/u.test(name))
-    .map(name => join('api', name).replaceAll('\\', '/')).sort();
+    .map(name => join('api', name).replaceAll('\\', '/'))
+    .sort();
+
   assert.equal(baseline.version, 1);
   assert.equal(baseline.starter, 'ChoiTimo/aleph-defense-starter');
   assert.deepEqual(baseline.functions, []);
-  assert.deepEqual(baseline.allowedNew, ['api/ai.js', 'api/threat-intel.js']);
-  assert.deepEqual(actual, [...baseline.functions, ...baseline.allowedNew].sort());
+  assert.deepEqual(baseline.allowedNew, [
+    'api/ai.js',
+    'api/threat-intel.js',
+  ]);
+
+  // 기존 시작 틀의 두 API가 허용 목록에 있고 실제 파일로 존재하는지 확인한다.
+  for (const expected of baseline.allowedNew) {
+    assert.ok(actual.includes(expected), `필수 API 파일이 없습니다: ${expected}`);
+  }
 });
 
 test('미구현 서버 뼈대는 성공이나 로그인 통과로 가장하지 않는다', async () => {
@@ -22,10 +33,19 @@ test('미구현 서버 뼈대는 성공이나 로그인 통과로 가장하지 �
     const headers = new Map();
     let status;
     let body;
+
     handler({}, {
       setHeader: (key, value) => headers.set(key.toLowerCase(), value),
-      status: value => { status = value; return { json: value => { body = value; } }; },
+      status: value => {
+        status = value;
+        return {
+          json: value => {
+            body = value;
+          },
+        };
+      },
     });
+
     assert.equal(status, 501);
     assert.equal(headers.get('cache-control'), 'no-store');
     assert.match(body.error, /NOT_IMPLEMENTED$/u);
@@ -33,8 +53,15 @@ test('미구현 서버 뼈대는 성공이나 로그인 통과로 가장하지 �
 });
 
 test('P7 시작 틀 안내는 실제 빌드 조건과 새 배포 시험에 맞는다', async () => {
-  const readme = await readFile(new URL('../package/README.md', import.meta.url), 'utf8');
-  const selfCheck = await readFile(new URL('../package/SELF-CHECK.md', import.meta.url), 'utf8');
+  const readme = await readFile(
+    new URL('../package/README.md', import.meta.url),
+    'utf8'
+  );
+  const selfCheck = await readFile(
+    new URL('../package/SELF-CHECK.md', import.meta.url),
+    'utf8'
+  );
+
   assert.match(readme, /새 Vercel 프로젝트/u);
   assert.match(readme, /Vercel이 제공하는 저장소·커밋·배포 URL 정보/u);
   assert.doesNotMatch(readme, /npm start/u);

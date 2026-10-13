@@ -312,3 +312,49 @@ npm run decider:test
 - 6단계에서 공격 점검 스크립트의 단계 호환성을 수정했습니다.
 - 기존 로그인 검증과 자료 소유권 확인 기능은 변경하지 않았습니다.
 
+## 8단계 · 메모와 강사 공지의 접근 권한을 분리합니다
+
+### 구현한 기능
+
+- src/resource-id.mjs에서 notes와 announcements 자원 유형을 분리하고 자원 ID 형식을 검증합니다.
+- src/decider.mjs에서 허용되지 않은 경로와 권한 요청을 기본 거부하도록 접근 정책을 구성했습니다.
+- 메모 API는 로그인 검증과 인증된 사용자 ID 기반의 소유권 확인을 유지합니다.
+- 공지 목록 및 생성 API와 개별 공지 조회, 수정, 삭제 API를 추가했습니다.
+- 공지 생성, 수정, 삭제 요청은 서버에서 로그인과 강사 권한을 검증하도록 구성했습니다.
+- 요청 본문의 role 값을 신뢰하지 않고 검증된 사용자 정보를 기준으로 권한을 판단하도록 구성했습니다.
+- Supabase RLS와 브라우저 역할의 직접 테이블 접근 권한을 관리하기 위한 SQL 파일을 추가했습니다.
+
+### 관련 파일
+
+- api/notes.js
+- api/notes/[id].js
+- api/announcements.js
+- api/announcements/[id].js
+- src/verify-login.mjs
+- src/verify-instructor.mjs
+- src/resource-id.mjs
+- src/decider.mjs
+- supabase/step4_ownership.sql
+- supabase/step5_server_only.sql
+- supabase/step8_announcements.sql
+- supabase/step8_instructor_roles.sql
+
+### 로컬 테스트
+
+다음 명령으로 각 테스트를 실행할 수 있습니다.
+
+- node --test test/stage8.test.mjs
+- node --test test/instructor.test.mjs
+- node --test test/announcements.test.mjs
+- node --test test/announcement-item.test.mjs
+- npm run decider:test
+
+이전 실행 기록에서는 접근 정책 테스트 10개, 강사 권한 테스트 8개, 공지 생성 API 테스트 10개, 개별 공지 API 테스트 10개가 통과했습니다. 판정 엔진 테스트도 4개 항목이 통과했습니다.
+
+### 검증 범위와 주의사항
+
+- 위 결과는 이전 로컬 테스트 실행 기록이며 현재 코드의 전체 테스트 결과를 보장하지 않습니다.
+- SQL 파일이 저장소에 존재하는 것만으로 실제 Supabase 데이터베이스에 적용되었다고 판단하지 않습니다.
+- 실제 Vercel 배포 환경에서의 접근 통제와 심판 평가 결과는 별도로 확인해야 합니다.
+- npm run test:r5는 이전 실행에서 실패한 기록이 있어 원인 확인 후 다시 검증해야 합니다.
+- 테스트 통과는 실제 서비스 보안 검증이나 심판 평가 통과를 의미하지 않습니다.

@@ -1,6 +1,7 @@
 export const RULE_IDS = Object.freeze([
   'device_registered',
   'step_up_required',
+  'resource_access',
 ]);
 
 export async function decide(request) {
@@ -12,13 +13,57 @@ export async function decide(request) {
     ruleIds: [ruleId],
   });
 
-  // 6단계: 등록되지 않은 기기는 접근 거부
+  // Stage 6: Deny unregistered devices.
   if (request?.deviceRegistered !== true) {
     return response('deny', 'device_not_registered', 'device_registered');
   }
 
-  // 7단계: 엔진이 제공한 가상 테스트 신호만 평가
-  // 출처가 없거나 불확실하면 정상 신호로 만들어 내지 않음
+  // Stage 8: Check the exact method and path.
+  // Do not use the query string to select an action.
+  const method = request?.method;
+  const path = request?.path;
+  const route = request?.route;
+  const service = request?.service;
+
+  const noteCollection =
+    service === 'notes' &&
+    path === '/notes' &&
+    (
+      (method === 'GET' && route === 'GET /notes') ||
+      (method === 'POST' && route === 'POST /notes')
+    );
+
+  const noteItem =
+    service === 'notes' &&
+    /^\/notes\/[A-Za-z0-9-]+$/.test(path ?? '') &&
+    (
+      (method === 'GET' && route === 'GET /notes/:id') ||
+      (method === 'PUT' && route === 'PUT /notes/:id') ||
+      (method === 'DELETE' && route === 'DELETE /notes/:id')
+    );
+
+  const announcementCollection =
+    service === 'announcements' &&
+    path === '/announcements' &&
+    method === 'GET' &&
+    route === 'GET /announcements';
+
+  const announcementItem =
+    service === 'announcements' &&
+    /^\/announcements\/[A-Za-z0-9-]+$/.test(path ?? '') &&
+    method === 'GET' &&
+    route === 'GET /announcements/:id';
+
+  if (
+    !noteCollection &&
+    !noteItem &&
+    !announcementCollection &&
+    !announcementItem
+  ) {
+    return response('deny', 'resource_access_denied', 'resource_access');
+  }
+
+  // Stage 7: Evaluate compound anomaly signals.
   const signals = request?.signals;
   const trustedFixture = signals?.source === 'judge_fixture';
 
@@ -47,7 +92,6 @@ export async function decide(request) {
     recentRiskActivity;
 
   if (compoundAnomaly) {
-    // 엔진이 확인한 최근 추가 인증만 인정
     const recentlyVerified =
       request?.stepUp?.verified === true &&
       Number.isFinite(request.stepUp.authAgeSeconds) &&
@@ -59,5 +103,5 @@ export async function decide(request) {
     }
   }
 
-  return response('allow', 'approved', 'device_registered');
+  return response('allow', 'approved', 'resource_access');
 }

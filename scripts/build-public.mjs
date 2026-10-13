@@ -1,14 +1,16 @@
+
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { deploymentIdentity } from './deployment-identity.mjs';
 
 const root = resolve(import.meta.dirname, '..');
+
 const config = JSON.parse(
   await readFile(resolve(root, 'aleph.config.json'), 'utf8')
 );
 
-if (![5, 6, 7].includes(config.step)) {
-  throw new Error('빌드는 5, 6, 7단계에서만 지원합니다.');
+if (![5, 6, 7, 8].includes(config.step)) {
+  throw new Error('빌드는 5~8단계에서만 지원합니다.');
 }
 
 await mkdir(resolve(root, 'public'), { recursive: true });

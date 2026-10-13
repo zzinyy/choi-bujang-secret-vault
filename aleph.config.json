@@ -1,5 +1,6 @@
+
 {
-  "step": 7,
+  "step": 8,
   "repoUrl": "https://github.com/zzinyy/choi-bujang-secret-vault",
   "publicAppUrl": "https://choi-bujang-secret-vault-ruddy.vercel.app",
   "sampleMarker": "SAMPLE_NOTE_1",
@@ -10,12 +11,17 @@
     "audience": "authenticated"
   },
   "allowedRoutes": [
-  "GET /api/notes",
-  "POST /api/notes",
-  "GET /api/notes/:id",
-  "PUT /api/notes/:id",
-  "DELETE /api/notes/:id"
-],
+    "GET /api/notes",
+    "POST /api/notes",
+    "GET /api/notes/:id",
+    "PUT /api/notes/:id",
+    "DELETE /api/notes/:id",
+    "GET /api/announcements",
+    "POST /api/announcements",
+    "GET /api/announcements/:id",
+    "PUT /api/announcements/:id",
+    "DELETE /api/announcements/:id"
+  ],
   "originalApiUrl": "https://uzwjgtcmibhjjjsmsyul.supabase.co/rest/v1/notes",
   "restoreRoute": null
 }
