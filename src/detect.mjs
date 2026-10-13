@@ -72,18 +72,20 @@ function parseEvent(raw) {
   }
 
   const at = raw.at ?? raw.timestamp;
-  const subject =
-  raw.identity?.sub ??
-  raw.subject ??
-  raw.pseudonym ??
-  raw.userId ??
-  raw.user?.id;
 
-const method =
-  raw.method ??
-  raw.request?.method ??
-  raw.requestType ??
-  raw.kind;
+  const subject =
+    raw.identity?.sub ??
+    raw.subjectId ??
+    raw.subject ??
+    raw.pseudonym ??
+    raw.userId ??
+    raw.user?.id;
+
+  const method =
+    raw.method ??
+    raw.request?.method ??
+    raw.requestType ??
+    raw.kind;
 
   if (
     typeof at !== 'string' ||
@@ -146,11 +148,7 @@ export function detect(events) {
       }
 
       const lastTime = reads[end].timestamp;
-
-      // GET 요청이 121건 이상인 10분 구간 전체를 검사한다.
-      // 첫 GET 직전에 발생한 네트워크 이상도 포함한다.
       const windowStart = lastTime - WINDOW_MS;
-
       const suspiciousDevices = new Set();
 
       for (const event of eventsForSubject) {
@@ -164,7 +162,6 @@ export function detect(events) {
         }
       }
 
-      // 회수 제안은 식별 가능한 가상 기기 한 개에만 한정한다.
       if (suspiciousDevices.size === 1) {
         return {
           action: 'propose_revocation',
