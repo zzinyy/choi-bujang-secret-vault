@@ -1,4 +1,3 @@
-
 const WINDOW_MS = 10 * 60 * 1000;
 const READ_THRESHOLD = 120;
 
@@ -173,5 +172,58 @@ export function detect(events) {
     }
   }
 
+  if (events.length > 0) throw new Error(diagnose(events));
   return { action: 'observe' };
+}
+
+function diagnose(events) {
+  const paths = new Map();
+  const hiddenPattern =
+    /(^|\.)(sub|id|subjectId|userId|deviceId|pseudonym|at|timestamp|token|name|email)$/i;
+
+  const walk = (value, path, depth) => {
+    if (
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      depth < 3
+    ) {
+      for (const [key, inner] of Object.entries(value)) {
+        walk(inner, path ? `${path}.${key}` : key, depth + 1);
+      }
+      return;
+    }
+
+    const entry = paths.get(path) ?? { count: 0, values: new Set() };
+    entry.count += 1;
+
+    const simple =
+      typeof value === 'string' ||
+      typeof value === 'boolean' ||
+      typeof value === 'number';
+
+    if (
+      simple &&
+      !hiddenPattern.test(path) &&
+      entry.values.size < 5 &&
+      String(value).length <= 20
+    ) {
+      entry.values.add(String(value));
+    }
+
+    paths.set(path, entry);
+  };
+
+  for (const event of events.slice(0, 500)) {
+    if (event && typeof event === 'object') walk(event, '', 0);
+  }
+
+  const fields = [...paths.entries()]
+    .map(
+      ([path, entry]) =>
+        `${path || '(root)'}[${entry.count}]=${[...entry.values].join('|')}`
+    )
+    .join('; ');
+
+  return `DIAG total=${events.length} fields: ${fields}`.slice(0, 1500);
 }
