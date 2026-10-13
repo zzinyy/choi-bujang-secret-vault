@@ -65,3 +65,46 @@ test('다른 사용자의 조회는 합산하지 않는다', () => {
 
   assert.deepEqual(detect(events), { action: 'observe' });
 });
+
+
+test('GET 요청 직전의 이상 네트워크 신호도 탐지한다', () => {
+  const networkEvent = {
+    at: new Date(START - 1000).toISOString(),
+    method: 'POST',
+    identity: { sub: subject },
+    network: 'unusual',
+    deviceId,
+  };
+
+  const events = [
+    networkEvent,
+    ...reads(121),
+  ];
+
+  assert.deepEqual(detect(events), {
+    action: 'propose_revocation',
+    reasonCode: 'compound_network_burst',
+    subject,
+    deviceId,
+  });
+});
+
+test('10분 범위 밖의 이상 네트워크 신호는 무시한다', () => {
+  const networkEvent = {
+    at: new Date(START - 11 * 60 * 1000).toISOString(),
+    method: 'POST',
+    identity: { sub: subject },
+    network: 'unusual',
+    deviceId,
+  };
+
+  const events = [
+    networkEvent,
+    ...reads(121),
+  ];
+
+  assert.deepEqual(detect(events), {
+    action: 'observe',
+  });
+});
+

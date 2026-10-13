@@ -3,9 +3,14 @@ const WINDOW_MS = 10 * 60 * 1000;
 const READ_THRESHOLD = 120;
 
 const UNUSUAL_NETWORK_VALUES = new Set([
-  'unusual', 'suspicious', 'unknown',
-  'untrusted', 'new', 'foreign',
-  'anomalous', 'risky',
+  'unusual',
+  'suspicious',
+  'unknown',
+  'untrusted',
+  'new',
+  'foreign',
+  'anomalous',
+  'risky',
 ]);
 
 function nonEmptyString(value) {
@@ -81,7 +86,7 @@ function parseEvent(raw) {
 
   return {
     timestamp: Date.parse(at),
-    subject,
+    subject: subject.trim(),
     method: typeof method === 'string'
       ? method.toUpperCase()
       : null,
@@ -115,7 +120,11 @@ export function detect(events) {
       event => event.method === 'GET'
     );
 
-    for (let end = 0, start = 0; end < reads.length; end++) {
+    for (
+      let end = 0, start = 0;
+      end < reads.length;
+      end++
+    ) {
       while (
         reads[end].timestamp - reads[start].timestamp >= WINDOW_MS
       ) {
@@ -126,14 +135,17 @@ export function detect(events) {
         continue;
       }
 
-      const firstTime = reads[start].timestamp;
       const lastTime = reads[end].timestamp;
+
+      // GET 요청이 121건 이상인 10분 구간 전체를 검사한다.
+      // 첫 GET 직전에 발생한 네트워크 이상도 포함한다.
+      const windowStart = lastTime - WINDOW_MS;
 
       const suspiciousDevices = new Set();
 
       for (const event of eventsForSubject) {
         if (
-          event.timestamp >= firstTime &&
+          event.timestamp > windowStart &&
           event.timestamp <= lastTime &&
           event.unusual &&
           event.deviceId
@@ -142,6 +154,7 @@ export function detect(events) {
         }
       }
 
+      // 회수 제안은 식별 가능한 가상 기기 한 개에만 한정한다.
       if (suspiciousDevices.size === 1) {
         return {
           action: 'propose_revocation',
