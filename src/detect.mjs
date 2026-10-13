@@ -72,8 +72,18 @@ function parseEvent(raw) {
   }
 
   const at = raw.at ?? raw.timestamp;
-  const subject = raw.identity?.sub;
-  const method = raw.method ?? raw.request?.method;
+  const subject =
+  raw.identity?.sub ??
+  raw.subject ??
+  raw.pseudonym ??
+  raw.userId ??
+  raw.user?.id;
+
+const method =
+  raw.method ??
+  raw.request?.method ??
+  raw.requestType ??
+  raw.kind;
 
   if (
     typeof at !== 'string' ||
