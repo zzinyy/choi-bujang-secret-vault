@@ -2,66 +2,16 @@
 const WINDOW_MS = 10 * 60 * 1000;
 const READ_THRESHOLD = 120;
 
-const ALLOWED_METHODS = new Set([
-  'GET', 'POST', 'PUT', 'PATCH', 'DELETE',
-]);
-
 const UNUSUAL_NETWORK_VALUES = new Set([
-  'unusual',
-  'suspicious',
-  'unknown',
-  'untrusted',
-  'new',
-  'foreign',
-  'anomalous',
-  'risky',
+  'unusual', 'suspicious', 'unknown',
+  'untrusted', 'new', 'foreign',
+  'anomalous', 'risky',
 ]);
 
 function nonEmptyString(value) {
-  return typeof value === 'string' && value.trim().length > 0
+  return typeof value === 'string' && value.trim()
     ? value.trim()
     : null;
-}
-
-function readNetwork(event) {
-  const network =
-    event.signals?.network ??
-    event.network ??
-    event.context?.network ??
-    event.request?.network;
-
-  if (network === null || network === undefined) {
-    return false;
-  }
-
-  if (typeof network === 'boolean') {
-    return network;
-  }
-
-  if (typeof network === 'string') {
-    return UNUSUAL_NETWORK_VALUES.has(
-      network.trim().toLowerCase(),
-    );
-  }
-
-  if (typeof network === 'object') {
-    return (
-      network.unusual === true ||
-      network.suspicious === true ||
-      network.isUnusual === true ||
-      network.isNew === true ||
-      UNUSUAL_NETWORK_VALUES.has(
-        String(
-          network.status ??
-          network.risk ??
-          network.type ??
-          '',
-        ).toLowerCase(),
-      )
-    );
-  }
-
-  return false;
 }
 
 function readDeviceId(event) {
@@ -74,32 +24,69 @@ function readDeviceId(event) {
   );
 }
 
-function readEvent(event) {
-  if (!event || typeof event !== 'object' || Array.isArray(event)) {
+function unusualNetwork(event) {
+  const network =
+    event.signals?.network ??
+    event.network ??
+    event.context?.network ??
+    event.request?.network;
+
+  if (typeof network === 'boolean') {
+    return network;
+  }
+
+  if (typeof network === 'string') {
+    return UNUSUAL_NETWORK_VALUES.has(
+      network.trim().toLowerCase()
+    );
+  }
+
+  if (network && typeof network === 'object') {
+    return (
+      network.unusual === true ||
+      network.suspicious === true ||
+      network.isUnusual === true ||
+      network.isNew === true ||
+      UNUSUAL_NETWORK_VALUES.has(
+        String(
+          network.status ??
+          network.risk ??
+          network.type ??
+          ''
+        ).trim().toLowerCase()
+      )
+    );
+  }
+
+  return false;
+}
+
+function parseEvent(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return null;
   }
 
-  const at = event.at;
-  const method = event.method;
-  const subject = event.identity?.sub;
+  const at = raw.at ?? raw.timestamp;
+  const subject = raw.identity?.sub;
+  const method = raw.method ?? raw.request?.method;
 
   if (
     typeof at !== 'string' ||
     !Number.isFinite(Date.parse(at)) ||
-    typeof method !== 'string' ||
-    !ALLOWED_METHODS.has(method) ||
     typeof subject !== 'string' ||
-    subject.length === 0
+    !subject.trim()
   ) {
     return null;
   }
 
   return {
     timestamp: Date.parse(at),
-    method,
     subject,
-    deviceId: readDeviceId(event),
-    unusualNetwork: readNetwork(event),
+    method: typeof method === 'string'
+      ? method.toUpperCase()
+      : null,
+    deviceId: readDeviceId(raw),
+    unusual: unusualNetwork(raw),
   };
 }
 
@@ -108,53 +95,59 @@ export function detect(events) {
     throw new TypeError('invalid_detection_events');
   }
 
-  const readsByDevice = new Map();
+  const bySubject = new Map();
 
-  for (const rawEvent of events) {
-    const event = readEvent(rawEvent);
+  for (const raw of events) {
+    const event = parseEvent(raw);
+    if (!event) continue;
 
-    if (!event || event.method !== 'GET' || !event.deviceId) {
-      continue;
-    }
-
-    const key = JSON.stringify([
-      event.subject,
-      event.deviceId,
-    ]);
-
-    const current = readsByDevice.get(key) ?? [];
-    current.push(event);
-    readsByDevice.set(key, current);
+    const group = bySubject.get(event.subject) ?? [];
+    group.push(event);
+    bySubject.set(event.subject, group);
   }
 
-  for (const reads of readsByDevice.values()) {
-    reads.sort((a, b) => a.timestamp - b.timestamp);
+  for (const [subject, eventsForSubject] of bySubject) {
+    eventsForSubject.sort(
+      (a, b) => a.timestamp - b.timestamp
+    );
 
-    let start = 0;
-    let unusualCount = 0;
+    const reads = eventsForSubject.filter(
+      event => event.method === 'GET'
+    );
 
-    for (let end = 0; end < reads.length; end += 1) {
-      if (reads[end].unusualNetwork) {
-        unusualCount += 1;
-      }
-
+    for (let end = 0, start = 0; end < reads.length; end++) {
       while (
         reads[end].timestamp - reads[start].timestamp >= WINDOW_MS
       ) {
-        if (reads[start].unusualNetwork) {
-          unusualCount -= 1;
-        }
-        start += 1;
+        start++;
       }
 
-      const count = end - start + 1;
+      if (end - start + 1 <= READ_THRESHOLD) {
+        continue;
+      }
 
-      if (count > READ_THRESHOLD && unusualCount > 0) {
+      const firstTime = reads[start].timestamp;
+      const lastTime = reads[end].timestamp;
+
+      const suspiciousDevices = new Set();
+
+      for (const event of eventsForSubject) {
+        if (
+          event.timestamp >= firstTime &&
+          event.timestamp <= lastTime &&
+          event.unusual &&
+          event.deviceId
+        ) {
+          suspiciousDevices.add(event.deviceId);
+        }
+      }
+
+      if (suspiciousDevices.size === 1) {
         return {
           action: 'propose_revocation',
           reasonCode: 'compound_network_burst',
-          subject: reads[end].subject,
-          deviceId: reads[end].deviceId,
+          subject,
+          deviceId: [...suspiciousDevices][0],
         };
       }
     }
