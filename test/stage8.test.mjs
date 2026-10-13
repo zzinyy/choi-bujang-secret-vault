@@ -169,3 +169,24 @@ test('메모 생성 시 인증된 사용자를 소유자로 지정한다', () =>
   assert.match(source, /if\s*\(error\)/);
   assert.match(source, /response\.status\(201\)/);
 });
+
+test('8단계: 다른 사용자 소유 메모 조회를 거부한다', async () => {
+  const request = {
+    ...baseRequest,
+    requestId: 'stage8-other-owner-test',
+    subjectId: 'user-a',
+    resourceOwnerId: 'user-b',
+    deviceRegistered: true,
+    method: 'GET',
+    path: '/notes/demo',
+    route: 'GET /notes/:id'
+  };
+
+  const result = await decide(request);
+
+  assert.equal(
+    result.decision,
+    'deny',
+    '다른 사용자 소유 메모는 조회할 수 없어야 한다'
+  );
+});

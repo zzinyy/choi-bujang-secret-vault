@@ -63,6 +63,21 @@ export async function decide(request) {
     return response('deny', 'resource_access_denied', 'resource_access');
   }
 
+  // Stage 8: Deny access to another user's note.
+  if (
+    noteItem &&
+    typeof request?.subjectId === 'string' &&
+    typeof request?.resourceOwnerId === 'string' &&
+    request.subjectId !== request.resourceOwnerId
+  ) {
+    return response(
+      'deny',
+      'resource_access_denied',
+      'resource_access'
+    );
+  }
+
+
   // Stage 7: Evaluate compound anomaly signals.
   const signals = request?.signals;
   const trustedFixture = signals?.source === 'judge_fixture';
