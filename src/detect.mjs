@@ -1,17 +1,5 @@
-
 const WINDOW_MS = 10 * 60 * 1000;
 const READ_THRESHOLD = 120;
-
-const UNUSUAL_NETWORK_VALUES = new Set([
-  'unusual',
-  'suspicious',
-  'unknown',
-  'untrusted',
-  'new',
-  'foreign',
-  'anomalous',
-  'risky',
-]);
 
 function nonEmptyString(value) {
   return typeof value === 'string' && value.trim()
@@ -27,43 +15,6 @@ function readDeviceId(event) {
     nonEmptyString(event.context?.deviceId) ??
     nonEmptyString(event.request?.deviceId)
   );
-}
-
-function unusualNetwork(event) {
-  const network =
-    event.signals?.network ??
-    event.network ??
-    event.context?.network ??
-    event.request?.network;
-
-  if (typeof network === 'boolean') {
-    return network;
-  }
-
-  if (typeof network === 'string') {
-    return UNUSUAL_NETWORK_VALUES.has(
-      network.trim().toLowerCase()
-    );
-  }
-
-  if (network && typeof network === 'object') {
-    return (
-      network.unusual === true ||
-      network.suspicious === true ||
-      network.isUnusual === true ||
-      network.isNew === true ||
-      UNUSUAL_NETWORK_VALUES.has(
-        String(
-          network.status ??
-          network.risk ??
-          network.type ??
-          ''
-        ).trim().toLowerCase()
-      )
-    );
-  }
-
-  return false;
 }
 
 function parseEvent(raw) {
@@ -103,7 +54,6 @@ function parseEvent(raw) {
       ? method.toUpperCase()
       : null,
     deviceId: readDeviceId(raw),
-    unusual: unusualNetwork(raw),
   };
 }
 
@@ -147,29 +97,22 @@ export function detect(events) {
         continue;
       }
 
-      const lastTime = reads[end].timestamp;
-      const windowStart = lastTime - WINDOW_MS;
-      const suspiciousDevices = new Set();
-
-      for (const event of eventsForSubject) {
-        if (
-          event.timestamp > windowStart &&
-          event.timestamp <= lastTime &&
-          event.unusual &&
-          event.deviceId
-        ) {
-          suspiciousDevices.add(event.deviceId);
-        }
+      const devices = new Set();
+      for (let i = start; i <= end; i++) {
+        if (reads[i].deviceId) devices.add(reads[i].deviceId);
       }
 
-      if (suspiciousDevices.size === 1) {
-        return {
-          action: 'propose_revocation',
-          reasonCode: 'compound_network_burst',
-          subject,
-          deviceId: [...suspiciousDevices][0],
-        };
+      const result = {
+        action: 'propose_revocation',
+        reasonCode: 'burst_read',
+        subject,
+      };
+
+      if (devices.size === 1) {
+        result.deviceId = [...devices][0];
       }
+
+      return result;
     }
   }
 
