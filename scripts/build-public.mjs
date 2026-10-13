@@ -7,8 +7,8 @@ const config = JSON.parse(
   await readFile(resolve(root, 'aleph.config.json'), 'utf8')
 );
 
-if (config.step !== 5) {
-  throw new Error('5단계 빌드에서는 aleph.config.json의 step이 5이어야 합니다.');
+if (![5, 6, 7].includes(config.step)) {
+  throw new Error('빌드는 5, 6, 7단계에서만 지원합니다.');
 }
 
 await mkdir(resolve(root, 'public'), { recursive: true });
