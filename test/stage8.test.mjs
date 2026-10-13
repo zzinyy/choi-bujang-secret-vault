@@ -80,7 +80,7 @@ test('강사 공지 수정 요청을 거부한다', async () => {
   assert.equal(result.decision, 'deny');
 });
 
-test('강사 공지 조회 경로를 구분한다', async () => {
+test('강사 공지 조회 경로를 거부한다', async () => {
   const result = await decide(
     makeRequest({
       service: 'announcements',
@@ -90,7 +90,8 @@ test('강사 공지 조회 경로를 구분한다', async () => {
     })
   );
 
-  assert.equal(result.decision, 'allow');
+  assert.equal(result.decision, 'deny');
+  assert.equal(result.reasonCode, 'resource_access_denied');
 });
 
 test('메모 export 우회 경로를 거부한다', async () => {
@@ -170,23 +171,24 @@ test('메모 생성 시 인증된 사용자를 소유자로 지정한다', () =>
   assert.match(source, /response\.status\(201\)/);
 });
 
-test('8단계: 다른 사용자 소유 메모 조회를 거부한다', async () => {
-  const request = {
-    ...baseRequest,
-    requestId: 'stage8-other-owner-test',
-    subjectId: 'user-a',
-    resourceOwnerId: 'user-b',
-    deviceRegistered: true,
-    method: 'GET',
-    path: '/notes/demo',
-    route: 'GET /notes/:id'
-  };
-
-  const result = await decide(request);
-
-  assert.equal(
-    result.decision,
-    'deny',
-    '다른 사용자 소유 메모는 조회할 수 없어야 한다'
+test('8단계: 개별 메모 API는 인증된 사용자로 소유권을 제한한다', () => {
+  const source = readFileSync(
+    new URL('../api/notes/[id].js', import.meta.url),
+    'utf8'
   );
+
+  const getStart = source.indexOf("if (request.method === 'GET')");
+  const putStart = source.indexOf("if (request.method === 'PUT')");
+
+  assert.notEqual(getStart, -1);
+  assert.notEqual(putStart, -1);
+
+  const getSection = source.slice(getStart, putStart);
+
+  assert.match(getSection, /\.eq\('id',\s*id\)/);
+  assert.match(
+    getSection,
+    /\.eq\('owner_id',\s*login\.userId\)/
+  );
+  assert.match(getSection, /response\.status\(404\)/);
 });

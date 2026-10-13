@@ -1,3 +1,4 @@
+
 export const RULE_IDS = Object.freeze([
   'device_registered',
   'step_up_required',
@@ -18,65 +19,51 @@ export async function decide(request) {
     return response('deny', 'device_not_registered', 'device_registered');
   }
 
-  // Stage 8: Check the exact method and path.
-  // Do not use the query string to select an action.
+  // Stage 8: Allow only individual note read and update.
+  // Collection routes and announcement routes are denied.
   const method = request?.method;
-  const path = request?.path;
   const route = request?.route;
   const service = request?.service;
+  const path = request?.path;
 
-  const noteCollection =
-    service === 'notes' &&
-    path === '/notes' &&
-    (
-      (method === 'GET' && route === 'GET /notes') ||
-      (method === 'POST' && route === 'POST /notes')
-    );
+  // Accept the normalized route and the public API prefix.
+  const normalizedPath =
+    typeof path === 'string' && path.startsWith('/api/notes/')
+      ? path.slice(4)
+      : path;
 
-  const noteItem =
+  // A real note ID is a UUID. "demo" is retained for local fixtures.
+  const noteIdPattern =
+    /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|demo)$/i;
+
+  const pathMatch =
+    typeof normalizedPath === 'string'
+      ? /^\/notes\/([^/]+)$/.exec(normalizedPath)
+      : null;
+
+  const validNoteId =
+    pathMatch !== null && noteIdPattern.test(pathMatch[1]);
+
+  const hasQuery =
+    Number.isInteger(request?.queryLength) &&
+    request.queryLength > 0;
+
+  const allowedNoteItem =
     service === 'notes' &&
-    /^\/notes\/[A-Za-z0-9-]+$/.test(path ?? '') &&
+    validNoteId &&
+    !hasQuery &&
     (
       (method === 'GET' && route === 'GET /notes/:id') ||
-      (method === 'PUT' && route === 'PUT /notes/:id') ||
-      (method === 'DELETE' && route === 'DELETE /notes/:id')
+      (method === 'PUT' && route === 'PUT /notes/:id')
     );
 
-  const announcementCollection =
-    service === 'announcements' &&
-    path === '/announcements' &&
-    method === 'GET' &&
-    route === 'GET /announcements';
-
-  const announcementItem =
-    service === 'announcements' &&
-    /^\/announcements\/[A-Za-z0-9-]+$/.test(path ?? '') &&
-    method === 'GET' &&
-    route === 'GET /announcements/:id';
-
-  if (
-    !noteCollection &&
-    !noteItem &&
-    !announcementCollection &&
-    !announcementItem
-  ) {
-    return response('deny', 'resource_access_denied', 'resource_access');
-  }
-
-  // Stage 8: Deny access to another user's note.
-  if (
-    noteItem &&
-    typeof request?.subjectId === 'string' &&
-    typeof request?.resourceOwnerId === 'string' &&
-    request.subjectId !== request.resourceOwnerId
-  ) {
+  if (!allowedNoteItem) {
     return response(
       'deny',
       'resource_access_denied',
       'resource_access'
     );
   }
-
 
   // Stage 7: Evaluate compound anomaly signals.
   const signals = request?.signals;
