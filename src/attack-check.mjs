@@ -2,6 +2,14 @@
  // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
+  // No official stage-12 recording contract is available in this kit.
+  // Student HTTP probes do not establish execution in the judge's run.
+  if (config.step === 12) {
+    return [
+      { attackId: 'anonymous_static_note_read', expected: '무인증 정적 메모 접근 차단', observed: 'not_run' },
+      { attackId: 'anonymous_notes_api_read', expected: '무인증 API 접근 차단', observed: 'not_run' },
+    ];
+  }
 if (![5, 6, 7, 8, 9, 10, 11].includes(config.step)) {
   throw new Error(
     '5~9단계 공격 점검에 맞게 aleph.config.json의 step을 확인해 주세요.'

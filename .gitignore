@@ -3,3 +3,5 @@ bundle-notes.json
 node_modules/
 public/aleph.json
 .vercel/
+artifacts/submission.json
+artifacts/operations-probe.json

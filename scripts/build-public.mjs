@@ -9,9 +9,9 @@ const config = JSON.parse(
   await readFile(resolve(root, 'aleph.config.json'), 'utf8')
 );
 
-// 5~9단계 빌드 지원
-if (![5, 6, 7, 8, 9, 10, 11].includes(config.step)) {
-  throw new Error('빌드는 5~9단계에서만 지원합니다.');
+// 5~12단계 빌드 지원
+if (![5, 6, 7, 8, 9, 10, 11, 12].includes(config.step)) {
+  throw new Error('빌드는 5~12단계에서만 지원합니다.');
 }
 
 await mkdir(resolve(root, 'public'), { recursive: true });

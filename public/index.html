@@ -274,9 +274,43 @@
         <li>로그인하면 가상 메모를 볼 수 있습니다.</li>
       </ul>
     </section>
+    <section id="recovery-operations" class="panel" hidden>
+      <h2>12단계 · 탈환 작전실</h2>
+      <p>제공 엔진: <strong>ALEPH SDP 엔진</strong>. 학생 작성: 판정기·탐지 규칙·접속 앱·자료실·이 작전실.</p>
+      <p>탐지기의 propose_revocation은 회수 제안입니다. 실제 회수 완료를 의미하지 않습니다.</p>
+      <p>공식 41종 시험: 기록 미연결 · 실행 수 확인 불가. 심판 실행 기록이 없는 제출 항목은 not_run입니다. 화면의 성공 문구는 통과 근거가 아닙니다.</p>
+      <button id="operations-probe" type="button">무인증 HTTP 자기 점검 실행</button>
+      <p>
+        판정·탐지·회수·복구 상태를 확인하는 운영 화면입니다.
+        실행 증거가 없는 항목은 미실행으로 표시합니다.
+      </p>
+
+      <h3>방어 현황</h3>
+      <ul id="operations-status" aria-live="polite">
+        <li>판정: 미실행</li>
+        <li>탐지: 미실행</li>
+        <li>기기 회수: 미실행</li>
+        <li>자료 복구: 미실행</li>
+      </ul>
+
+      <h3>통합 검증표</h3>
+      <p>
+        실제 요청 ID, 실행 시각, HTTP 상태 및 응답을
+        확인한 결과만 기록합니다.
+      </p>
+
+      <ul id="operations-evidence" aria-live="polite">
+        <li>등록된 통합 검증 결과가 없습니다.</li>
+      </ul>
+
+      <p id="operations-message" role="status" aria-live="polite">
+        기기 승인 후 운영 현황을 확인할 수 있습니다.
+      </p>
+    </section>
   </main>
 
   <script type="module">
+import { probeAnonymous } from './operations-evidence.js';
 import {
   createDeviceKey,
   setDeviceId,
@@ -309,7 +343,37 @@ import {
 const deviceApproval =
   document.querySelector('#device-approval');
 
-const notesSection = document.querySelector('#notes-section');
+const notesSection =
+  document.querySelector('#notes-section');
+
+const operationsSection =
+  document.querySelector('#recovery-operations');
+const operationsProbe = document.querySelector('#operations-probe');
+operationsProbe.addEventListener('click', async () => {
+  const session = currentSession;
+  if (!session || !deviceApproved) return;
+  operationsProbe.disabled = true;
+  const message = document.querySelector('#operations-message');
+  message.textContent = '학생 HTTP 자기 점검 실행 중 · 공식 심판 시험과 별도입니다.';
+  try {
+    const rows = await probeAnonymous(location.origin);
+    if (currentSession !== session || !deviceApproved) return;
+    const list = document.querySelector('#operations-evidence');
+    list.replaceChildren();
+    for (const row of rows) {
+      const item = document.createElement('li');
+      item.textContent = `${row.source} · ${row.attackId} · ${row.observed} · HTTP ${row.httpStatus ?? '응답 없음'} · ${row.startedAt} ~ ${row.finishedAt} · 요청 식별자 ${row.requestId ?? '제공되지 않음'} (${row.requestIdSource ?? '없음'}) · ${row.responseSummary}`;
+      list.append(item);
+    }
+    message.textContent = '실제 HTTP 응답만 표시했습니다. 심판 기록 연동·타인 메모·회수·복구·41종 시험 통과는 확인되지 않았습니다.';
+  } finally { operationsProbe.disabled = false; }
+});
+
+function hideOperations() {
+  operationsSection.hidden = true;
+  document.querySelector('#operations-evidence').replaceChildren();
+  document.querySelector('#operations-message').textContent = '기기 승인 후 운영 현황을 확인할 수 있습니다.';
+}
 
 const deviceStatus =
   document.querySelector('#device-status');
@@ -363,8 +427,9 @@ deviceApproved = true;
 deviceStatus.textContent = '기기 승인이 확인되었습니다.';
 notesSection.hidden = false;
 noteEditor.hidden = false;
+operationsSection.hidden = false;
 
-    await loadNotes();
+await loadNotes();
 } catch (error) {
   if (currentSession !== checkedSession) return;
   deviceApproved = false;
@@ -457,6 +522,7 @@ let sessionVersion = 0;
 function hideProtectedNotes() {
   notesSection.hidden = true;
   noteEditor.hidden = true;
+  hideOperations();
   resetNoteForm();
   showNoteMessage('기기 승인 후 메모를 확인할 수 있습니다.');
 }

@@ -47,7 +47,10 @@ if (url === 'mock:device') {
         format: 'module',
         shortCircuit: true,
         source: `
-          export function createLoginVerifier() {
+          export function createLoginVerifier({ config }) {
+            if (!config.judgeIssuer || !config.identityProvider || config.api) {
+              throw new Error('Wrong login verifier config');
+            }
             return async (authorization) => {
               if (!authorization) return null;
               return {

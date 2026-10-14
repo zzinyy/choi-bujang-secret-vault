@@ -11,7 +11,7 @@ let verifyLogin;
 function getVerifier(supabaseSecretKey) {
   if (!verifyLogin) {
     verifyLogin = createLoginVerifier({
-      config,
+      config: alephConfig,
       supabaseSecretKey
     });
   }
