@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
 import config from '../aleph.config.json' with { type: 'json' };
@@ -19,6 +19,10 @@ function getVerifier(supabaseSecretKey) {
 function isUuid(value) {
   return typeof value === 'string'
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value);
+}
+
+function sha256(value) {
+  return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
 export default async function handler(request, response) {
@@ -113,13 +117,16 @@ export default async function handler(request, response) {
 
   const id = body.id ?? randomUUID();
 
+  const title = body.title.trim();
+  const content = body.body.trim();
+
   const { error } = await supabase
     .from('notes')
     .insert({
       id,
       owner_id: login.userId,
-      title: body.title.trim(),
-      content: body.body.trim()
+      title,
+      content
     });
 
   if (error) {
@@ -131,6 +138,29 @@ export default async function handler(request, response) {
 
     return response.status(500).json({
       error: 'NOTE_CREATE_FAILED'
+    });
+  }
+
+  const { error: backupError } = await supabase
+    .from('stage10_note_backups')
+    .insert({
+      note_id: id,
+      owner_id: login.userId,
+      title,
+      content,
+      content_sha256: sha256(content),
+      snapshot_sha256: sha256(`${title}\n${content}`)
+    });
+
+  if (backupError) {
+    await supabase
+      .from('notes')
+      .delete()
+      .eq('id', id)
+      .eq('owner_id', login.userId);
+
+    return response.status(500).json({
+      error: 'NOTE_BACKUP_FAILED'
     });
   }
 
