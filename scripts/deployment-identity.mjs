@@ -19,7 +19,7 @@ export function deploymentIdentity(env, config) {
     || repo.toLowerCase().endsWith('.git')
     || !SHA.test(commit || '')
     || !HOST.test(host || '')
-    || ![5, 6, 7, 8, 9].includes(config?.step)
+    || ![5, 6, 7, 8, 9, 10].includes(config?.step)
     || typeof config.judgeIssuer !== 'string'
     || !/^https:\/\/[a-z0-9-]+\.up\.railway\.app\/defense\/judge$/iu.test(config.judgeIssuer)
     || typeof config.sampleMarker !== 'string'
