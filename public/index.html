@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#101a28">
   <title>BYTE BACK | 최 부장의 비밀 자료실</title>
 
   <style>
@@ -198,6 +200,28 @@
       aria-live="polite"
     ></p>
 
+    <section id="device-approval" class="panel" hidden>
+      <h2>기기 승인</h2>
+
+      <p id="device-status" role="status" aria-live="polite">
+        기기 승인 상태를 확인하고 있습니다.
+      </p>
+
+      <button id="device-request-button" type="button">
+        기기 승인 요청
+      </button>
+
+      <button id="device-check-button" type="button">
+        승인 상태 다시 확인
+      </button>
+
+      <p>
+        앱 설치만으로 기기가 승인되지는 않습니다.
+        서버에서 등록 및 승인 여부를 확인한 후
+        보호 자료에 접근할 수 있습니다.
+      </p>
+    </section>
+
     <section id="note-editor" class="panel" hidden>
       <h2 id="editor-title">새 메모</h2>
 
@@ -253,7 +277,13 @@
   </main>
 
   <script type="module">
-    const SESSION_KEY = 'byte-back-session';
+import {
+  createDeviceKey,
+  setDeviceId,
+  clearDevice,
+  createDeviceHeaders
+} from './device-auth.js';
+
 
     const loggedOut =
       document.querySelector('#logged-out');
@@ -275,6 +305,109 @@
 
     const authMessage =
       document.querySelector('#auth-message');
+
+const deviceApproval =
+  document.querySelector('#device-approval');
+
+const deviceStatus =
+  document.querySelector('#device-status');
+
+const deviceRequestButton =
+  document.querySelector('#device-request-button');
+
+const deviceCheckButton =
+  document.querySelector('#device-check-button');
+
+deviceRequestButton.addEventListener('click', async () => {
+  if (!currentSession?.access_token) {
+    deviceStatus.textContent = '먼저 로그인해 주세요.';
+    return;
+  }
+
+deviceCheckButton.addEventListener('click', async () => {
+  if (!currentSession?.access_token) {
+    deviceStatus.textContent = '먼저 로그인해 주세요.';
+    return;
+  }
+
+  deviceCheckButton.disabled = true;
+  deviceStatus.textContent = '기기 승인 상태를 확인하고 있습니다.';
+
+  try {
+    const path = '/api/device/status';
+    const deviceHeaders = await createDeviceHeaders('GET', path);
+
+    const response = await fetch(path, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${currentSession.access_token}`,
+        ...deviceHeaders
+      }
+    });
+
+    const data = await readJson(response);
+
+    if (!response.ok) {
+      throw new Error(data.error || '승인 상태 확인 실패');
+    }
+
+if (data.approved !== true) {
+  deviceApproved = false;
+  deviceStatus.textContent =
+    '아직 승인되지 않은 기기입니다. 서버 승인을 기다려 주세요.';
+  noteEditor.hidden = true;
+  return;
+}
+
+deviceApproved = true;
+deviceStatus.textContent = '기기 승인이 확인되었습니다.';
+noteEditor.hidden = false;
+
+    await loadNotes();
+  } catch (error) {
+    noteEditor.hidden = true;
+    deviceStatus.textContent =
+      error.message || '기기 승인 확인 중 오류가 발생했습니다.';
+  } finally {
+    deviceCheckButton.disabled = false;
+  }
+});
+
+  deviceRequestButton.disabled = true;
+  deviceStatus.textContent = '기기 등록을 요청하고 있습니다.';
+
+  try {
+    const publicKeyJwk = await createDeviceKey();
+
+    const response = await fetch('/api/device/request', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${currentSession.access_token}`
+      },
+      body: JSON.stringify({ publicKeyJwk })
+    });
+
+    const data = await readJson(response);
+
+    if (!response.ok || !data.deviceId) {
+      throw new Error(data.error || '기기 등록 요청 실패');
+    }
+
+    setDeviceId(data.deviceId);
+
+    deviceStatus.textContent =
+      '기기 등록 요청 완료. 서버 승인을 기다리고 있습니다.';
+  } catch (error) {
+    clearDevice();
+    deviceStatus.textContent =
+      error.message || '기기 등록 중 오류가 발생했습니다.';
+  } finally {
+    deviceRequestButton.disabled = false;
+  }
+});
 
     const noteEditor =
       document.querySelector('#note-editor');
@@ -306,30 +439,20 @@
     const list =
       document.querySelector('#notes');
 
-    let currentSession = null;
+let currentSession = null;
+let memorySession = null;
+let deviceApproved = false;
 
-    function saveSession(session) {
-      if (session?.access_token && session?.refresh_token) {
-        sessionStorage.setItem(
-          SESSION_KEY,
-          JSON.stringify(session)
-        );
-        return;
-      }
+function saveSession(session) {
+  memorySession =
+    session?.access_token && session?.refresh_token
+      ? session
+      : null;
+}
 
-      sessionStorage.removeItem(SESSION_KEY);
-    }
-
-    function readStoredSession() {
-      try {
-        return JSON.parse(
-          sessionStorage.getItem(SESSION_KEY) || 'null'
-        );
-      } catch {
-        sessionStorage.removeItem(SESSION_KEY);
-        return null;
-      }
-    }
+function readStoredSession() {
+  return memorySession;
+}
 
     function showSession(session) {
       currentSession = session;
@@ -340,9 +463,14 @@
           session?.access_token
         );
 
-      loggedOut.hidden = isLoggedIn;
-      loggedIn.hidden = !isLoggedIn;
-      noteEditor.hidden = !isLoggedIn;
+loggedOut.hidden = isLoggedIn;
+loggedIn.hidden = !isLoggedIn;
+
+// 기기 승인 전에는 메모 편집 화면을 표시하지 않는다.
+noteEditor.hidden = true;
+
+// 로그인한 사용자에게만 기기 승인 화면을 표시한다.
+document.querySelector('#device-approval').hidden = !isLoggedIn;
 
       userStatus.textContent = isLoggedIn
         ? '인증된 계정으로 로그인했습니다.'
@@ -399,14 +527,21 @@
       }
 
       try {
-        const response =
-          await fetch('/api/notes', {
-            cache: 'no-store',
-            headers: {
-              Authorization:
-                `Bearer ${session.access_token}`
-            }
-          });
+        const path = '/api/notes';
+
+const deviceHeaders =
+  await createDeviceHeaders('GET', path);
+
+const response =
+  await fetch(path, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Authorization:
+        `Bearer ${session.access_token}`,
+      ...deviceHeaders
+    }
+  });
 
         const data =
           await readJson(response);
@@ -507,14 +642,20 @@
                 deleteButton.disabled = true;
 
                 try {
-                  const response =
-                    await fetch(
-                      `/api/notes/${encodeURIComponent(note.id)}`,
-                      {
-                        method: 'DELETE',
-                        headers
-                      }
-                    );
+                 const path =
+  `/api/notes/${encodeURIComponent(note.id)}`;
+
+const deviceHeaders =
+  await createDeviceHeaders('DELETE', path);
+
+const response =
+  await fetch(path, {
+    method: 'DELETE',
+    headers: {
+      ...headers,
+      ...deviceHeaders
+    }
+  });
 
                   const data =
                     await readJson(response);
@@ -694,29 +835,29 @@
         noteMessage.textContent = '';
 
         try {
-          const response =
-            await fetch(
-              editingId
-                ? `/api/notes/${encodeURIComponent(editingId)}`
-                : '/api/notes',
-              {
-                method:
-                  editingId
-                    ? 'PUT'
-                    : 'POST',
+          const path = editingId
+  ? `/api/notes/${encodeURIComponent(editingId)}`
+  : '/api/notes';
 
-                headers: {
-                  ...headers,
-                  'Content-Type':
-                    'application/json'
-                },
+const method = editingId ? 'PUT' : 'POST';
 
-                body: JSON.stringify({
-                  title,
-                  body
-                })
-              }
-            );
+const requestBody = JSON.stringify({
+  title,
+  body
+});
+
+const deviceHeaders =
+  await createDeviceHeaders(method, path, requestBody);
+
+const response = await fetch(path, {
+  method,
+  headers: {
+    ...headers,
+    ...deviceHeaders,
+    'Content-Type': 'application/json'
+  },
+  body: requestBody
+});
 
           const data =
             await readJson(response);
@@ -793,17 +934,28 @@
         }
 
         saveSession(data.session);
-        showSession(data.session);
+showSession(data.session);
+showNoteMessage('기기 승인 후 메모를 확인할 수 있습니다.');
 
-        await loadNotes(data.session);
-      } catch {
-        saveSession(null);
-        showSession(null);
-        await loadNotes(null);
-      }
-    }
+showNoteMessage('기기 승인 후 메모를 확인할 수 있습니다.');
+} catch {
+  saveSession(null);
+  showSession(null);
+  await loadNotes(null);
+}
 
     await restoreSession();
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .catch((error) => {
+            console.error('서비스 워커 등록 실패:', error);
+          });
+      });
+    }
   </script>
 </body>
 </html>

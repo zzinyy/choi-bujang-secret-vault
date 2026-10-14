@@ -1,7 +1,10 @@
+
 import { createHash, randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
-import config from '../aleph.config.json' with { type: 'json' };
+import { readRequestBody } from '../src/read-request-body.mjs';
+import { authorizeDevice } from '../src/authorize-device.mjs';
+import alephConfig from '../aleph.config.json' with { type: 'json' };
 
 let verifyLogin;
 
@@ -24,6 +27,12 @@ function isUuid(value) {
 function sha256(value) {
   return createHash('sha256').update(value, 'utf8').digest('hex');
 }
+
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};
 
 export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store');
@@ -75,7 +84,20 @@ export default async function handler(request, response) {
   );
 
   if (request.method === 'GET') {
-    const { data, error } = await supabase
+  const deviceAuth = await authorizeDevice({
+    request,
+    supabase,
+    login,
+    rawBody: ''
+  });
+
+  if (!deviceAuth.ok) {
+    return response.status(403).json({
+      error: deviceAuth.reason
+    });
+  }
+
+  const { data, error } = await supabase
       .from('notes')
       .select('id, title, content')
       .eq('owner_id', login.userId)
@@ -96,7 +118,29 @@ export default async function handler(request, response) {
     });
   }
 
-  const body = request.body ?? {};
+let body;
+let rawBody;
+
+try {
+  ({ body, rawBody } = await readRequestBody(request));
+} catch (error) {
+  return response.status(error.statusCode ?? 400).json({
+    error: error.message ?? 'INVALID_REQUEST_BODY'
+  });
+}
+
+const deviceAuth = await authorizeDevice({
+  request,
+  supabase,
+  login,
+  rawBody
+});
+
+if (!deviceAuth.ok) {
+  return response.status(403).json({
+    error: deviceAuth.reason
+  });
+}
 
   if (
     typeof body.title !== 'string'

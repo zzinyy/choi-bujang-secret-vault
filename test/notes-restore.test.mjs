@@ -45,11 +45,28 @@ registerHooks({
         shortCircuit: true
       };
     }
+    if (specifier.endsWith('/src/authorize-device.mjs')) {
+      return {
+        url: 'mock:restore-device',
+        shortCircuit: true
+      };
+    }
 
     return nextResolve(specifier, context);
   },
 
   load(url, context, nextLoad) {
+    if (url === 'mock:restore-device') {
+      return {
+        format: 'module',
+        shortCircuit: true,
+        source: `
+          export async function authorizeDevice() {
+            return { ok: true, deviceId: 'test-approved-device' };
+          }
+        `
+      };
+    }
     if (url === 'mock:restore-login') {
       return {
         format: 'module',
@@ -327,17 +344,29 @@ async function requestRestore({
       return this;
     }
   };
+  const rawBody = body === undefined
+    ? ''
+    : JSON.stringify(body);
 
-  await handler({
+  const request = {
     method,
+    url: `/api/notes/${id}/restore`,
     headers: {
       authorization: state.authorized
         ? 'Bearer test-token'
         : undefined
     },
     query: { id },
-    body
-  }, response);
+    body,
+
+    async *[Symbol.asyncIterator]() {
+      if (rawBody) {
+        yield Buffer.from(rawBody, 'utf8');
+      }
+    }
+  };
+
+  await handler(request, response);
 
   return response;
 }

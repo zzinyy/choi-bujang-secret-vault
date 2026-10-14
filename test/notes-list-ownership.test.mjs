@@ -23,10 +23,25 @@ registerHooks({
       return { url: 'mock:login', shortCircuit: true };
     }
 
+if (specifier.endsWith('/src/authorize-device.mjs')) {
+  return { url: 'mock:device', shortCircuit: true };
+}
+
     return nextResolve(specifier, context);
   },
 
   load(url, context, nextLoad) {
+if (url === 'mock:device') {
+  return {
+    format: 'module',
+    shortCircuit: true,
+    source: `
+      export async function authorizeDevice() {
+        return { ok: true, deviceId: 'test-approved-device' };
+      }
+    `
+  };
+}
     if (url === 'mock:login') {
       return {
         format: 'module',

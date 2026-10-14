@@ -10,7 +10,7 @@ const config = JSON.parse(
 );
 
 // 5~9단계 빌드 지원
-if (![5, 6, 7, 8, 9, 10].includes(config.step)) {
+if (![5, 6, 7, 8, 9, 10, 11].includes(config.step)) {
   throw new Error('빌드는 5~9단계에서만 지원합니다.');
 }
 

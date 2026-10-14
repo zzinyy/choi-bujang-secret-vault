@@ -1,14 +1,16 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../../../src/verify-login.mjs';
-import config from '../../../aleph.config.json' with { type: 'json' };
+import { authorizeDevice } from '../../../src/authorize-device.mjs';
+import { readRequestBody } from '../../../src/read-request-body.mjs';
+import alephConfig from '../../../aleph.config.json' with { type: 'json' };
 
 let verifyLogin;
 
 function getVerifier(supabaseSecretKey) {
   if (!verifyLogin) {
     verifyLogin = createLoginVerifier({
-      config,
+      config: alephConfig,
       supabaseSecretKey
     });
   }
@@ -35,25 +37,19 @@ function respond(response, status, body) {
   return response.status(status).json(body);
 }
 
-async function writeAudit(supabase, outcome, details) {
-  const { error } = await supabase
-    .from('stage10_policy_audit')
-    .insert({
-      action: 'note_restore',
-      outcome,
-      details
-    });
-
-  if (error) {
-    throw new Error('NOTE_RESTORE_AUDIT_FAILED');
+// Disable automatic body parsing to preserve signed request bytes.
+export const config = {
+  api: {
+    bodyParser: false
   }
-}
+};
 
 export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store');
 
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST');
+
     return respond(response, 405, {
       error: 'METHOD_NOT_ALLOWED'
     });
@@ -104,7 +100,36 @@ export default async function handler(request, response) {
     });
   }
 
-  const preview = request.body?.preview === true;
+  let body = request.body ?? {};
+  let rawBody = '';
+
+  // Stage 11: Student requests require an approved device
+  // and a valid signature over the original request body.
+  if (login.kind === 'student') {
+    try {
+      ({ body, rawBody } = await readRequestBody(request));
+    } catch (error) {
+      return respond(response, error.statusCode ?? 400, {
+        error: error.message ?? 'INVALID_REQUEST_BODY'
+      });
+    }
+
+    const deviceAuth = await authorizeDevice({
+      request,
+      supabase,
+      login,
+      rawBody
+    });
+
+    if (!deviceAuth.ok) {
+      return respond(response, 403, {
+        error: deviceAuth.reason
+      });
+    }
+  }
+
+  // Preserve the existing authenticated judge restore flow.
+  const preview = body?.preview === true;
 
   try {
     const { data, error } = await supabase.rpc(

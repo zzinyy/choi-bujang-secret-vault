@@ -1,13 +1,16 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../../src/verify-login.mjs';
-import config from '../../aleph.config.json' with { type: 'json' };
+import { readRequestBody } from '../../src/read-request-body.mjs';
+import { authorizeDevice } from '../../src/authorize-device.mjs';
+import alephConfig from '../../aleph.config.json' with { type: 'json' };
 
 let verifyLogin;
 
 function getVerifier(supabaseSecretKey) {
   if (!verifyLogin) {
     verifyLogin = createLoginVerifier({
-      config,
+      config: alephConfig,
       supabaseSecretKey
     });
   }
@@ -19,6 +22,12 @@ function isUuid(value) {
   return typeof value === 'string'
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value);
 }
+
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};
 
 export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store');
@@ -79,6 +88,32 @@ export default async function handler(request, response) {
     }
   );
 
+let body = {};
+let rawBody = '';
+
+if (request.method === 'PUT') {
+  try {
+    ({ body, rawBody } = await readRequestBody(request));
+  } catch (error) {
+    return response.status(error.statusCode ?? 400).json({
+      error: error.message ?? 'INVALID_REQUEST_BODY'
+    });
+  }
+}
+
+const deviceAuth = await authorizeDevice({
+  request,
+  supabase,
+  login,
+  rawBody
+});
+
+if (!deviceAuth.ok) {
+  return response.status(403).json({
+    error: deviceAuth.reason
+  });
+}
+
   if (request.method === 'GET') {
     const { data, error } = await supabase
       .from('notes')
@@ -107,7 +142,7 @@ export default async function handler(request, response) {
   }
 
   if (request.method === 'PUT') {
-    const body = request.body ?? {};
+
 
     if (
       typeof body.title !== 'string'

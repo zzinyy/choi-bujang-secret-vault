@@ -1,3 +1,4 @@
+
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { registerHooks } from 'node:module';
@@ -34,10 +35,35 @@ registerHooks({
       };
     }
 
+    // 11단계: 테스트 환경에서 승인된 기기를 모의 처리한다.
+    if (specifier.endsWith('/src/authorize-device.mjs')) {
+      return {
+        url: 'mock:device',
+        shortCircuit: true
+      };
+    }
+
     return nextResolve(specifier, context);
   },
 
   load(url, context, nextLoad) {
+    // 11단계: 실제 기기 인증을 우회하지 않고
+    // 이 테스트에서만 승인된 기기를 가정한다.
+    if (url === 'mock:device') {
+      return {
+        format: 'module',
+        shortCircuit: true,
+        source: `
+          export async function authorizeDevice() {
+            return {
+              ok: true,
+              deviceId: 'test-approved-device'
+            };
+          }
+        `
+      };
+    }
+
     if (url === 'mock:login') {
       return {
         format: 'module',

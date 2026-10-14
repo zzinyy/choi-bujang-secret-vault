@@ -177,15 +177,20 @@ test('8단계: 개별 메모 API는 인증된 사용자로 소유권을 제한�
     'utf8'
   );
 
-  const getStart = source.indexOf("if (request.method === 'GET')");
-  const putStart = source.indexOf("if (request.method === 'PUT')");
+const getStart = source.indexOf(
+  "if (request.method === 'GET')"
+);
 
-  assert.notEqual(getStart, -1);
-  assert.notEqual(putStart, -1);
+assert.notEqual(getStart, -1);
 
-  const getSection = source.slice(getStart, putStart);
+const getSection = source.slice(getStart);
 
-  assert.match(getSection, /\.eq\('id',\s*id\)/);
+assert.match(getSection, /\.eq\('id',\s*id\)/);
+assert.match(
+  getSection,
+  /\.eq\('owner_id',\s*login\.userId\)/
+);
+assert.match(getSection, /response\.status\(404\)/);
   assert.match(
     getSection,
     /\.eq\('owner_id',\s*login\.userId\)/
