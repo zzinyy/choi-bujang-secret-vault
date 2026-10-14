@@ -70,7 +70,7 @@ export default async function handler(request, response) {
     });
   }
 
-  if (!login || login.kind !== 'student') {
+  if (!login || !['student', 'judge'].includes(login.kind)) {
     return respond(response, 401, {
       error: 'UNAUTHORIZED'
     });
