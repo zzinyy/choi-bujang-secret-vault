@@ -267,7 +267,7 @@
       ></p>
     </section>
 
-    <section>
+    <section id="notes-section" hidden>
       <h2>가상 메모</h2>
 
       <ul id="notes" aria-live="polite">
@@ -309,6 +309,8 @@ import {
 const deviceApproval =
   document.querySelector('#device-approval');
 
+const notesSection = document.querySelector('#notes-section');
+
 const deviceStatus =
   document.querySelector('#device-status');
 
@@ -318,18 +320,13 @@ const deviceRequestButton =
 const deviceCheckButton =
   document.querySelector('#device-check-button');
 
-deviceRequestButton.addEventListener('click', async () => {
-  if (!currentSession?.access_token) {
-    deviceStatus.textContent = '먼저 로그인해 주세요.';
-    return;
-  }
-
 deviceCheckButton.addEventListener('click', async () => {
   if (!currentSession?.access_token) {
     deviceStatus.textContent = '먼저 로그인해 주세요.';
     return;
   }
 
+  const checkedSession = currentSession;
   deviceCheckButton.disabled = true;
   deviceStatus.textContent = '기기 승인 상태를 확인하고 있습니다.';
 
@@ -347,6 +344,7 @@ deviceCheckButton.addEventListener('click', async () => {
     });
 
     const data = await readJson(response);
+    if (currentSession !== checkedSession) return;
 
     if (!response.ok) {
       throw new Error(data.error || '승인 상태 확인 실패');
@@ -354,27 +352,39 @@ deviceCheckButton.addEventListener('click', async () => {
 
 if (data.approved !== true) {
   deviceApproved = false;
+  hideProtectedNotes();
+
   deviceStatus.textContent =
     '아직 승인되지 않은 기기입니다. 서버 승인을 기다려 주세요.';
-  noteEditor.hidden = true;
   return;
 }
 
 deviceApproved = true;
 deviceStatus.textContent = '기기 승인이 확인되었습니다.';
+notesSection.hidden = false;
 noteEditor.hidden = false;
 
     await loadNotes();
-  } catch (error) {
-    noteEditor.hidden = true;
-    deviceStatus.textContent =
-      error.message || '기기 승인 확인 중 오류가 발생했습니다.';
-  } finally {
+} catch (error) {
+  if (currentSession !== checkedSession) return;
+  deviceApproved = false;
+  hideProtectedNotes();
+
+  deviceStatus.textContent =
+    error.message || '기기 승인 확인 중 오류가 발생했습니다.';
+} finally {
     deviceCheckButton.disabled = false;
   }
 });
 
+deviceRequestButton.addEventListener('click', async () => {
   deviceRequestButton.disabled = true;
+  if (!currentSession?.access_token) {
+    deviceStatus.textContent = '먼저 로그인해 주세요.';
+    return;
+  }
+  deviceApproved = false;
+  hideProtectedNotes();
   deviceStatus.textContent = '기기 등록을 요청하고 있습니다.';
 
   try {
@@ -442,6 +452,14 @@ noteEditor.hidden = false;
 let currentSession = null;
 let memorySession = null;
 let deviceApproved = false;
+let sessionVersion = 0;
+
+function hideProtectedNotes() {
+  notesSection.hidden = true;
+  noteEditor.hidden = true;
+  resetNoteForm();
+  showNoteMessage('기기 승인 후 메모를 확인할 수 있습니다.');
+}
 
 function saveSession(session) {
   memorySession =
@@ -456,6 +474,9 @@ function readStoredSession() {
 
     function showSession(session) {
       currentSession = session;
+      sessionVersion += 1;
+      deviceApproved = false;
+      hideProtectedNotes();
 
       const isLoggedIn =
         Boolean(
@@ -518,14 +539,20 @@ document.querySelector('#device-approval').hidden = !isLoggedIn;
       }
     }
 
-    async function loadNotes(session = currentSession) {
-      if (!session?.access_token) {
+async function loadNotes(session = currentSession) {
+  if (!deviceApproved || !session?.access_token || session?.access_token !== currentSession?.access_token) {
+    showNoteMessage('기기 승인 후 메모를 확인할 수 있습니다.');
+    return;
+  }
+
+  if (!session?.access_token) {
         showNoteMessage(
           '로그인하면 가상 메모를 볼 수 있습니다.'
         );
         return;
       }
 
+      const versionAtStart = sessionVersion;
       try {
         const path = '/api/notes';
 
@@ -552,6 +579,8 @@ const response =
             '메모를 읽을 수 없습니다.'
           );
         }
+
+        if (!deviceApproved || versionAtStart !== sessionVersion) return;
 
         if (!Array.isArray(data.notes)) {
           throw new Error(
@@ -698,7 +727,7 @@ const response =
 
         list.replaceChildren(...items);
       } catch (error) {
-        showNoteMessage(error.message);
+        if (deviceApproved && versionAtStart === sessionVersion) showNoteMessage(error.message);
       }
     }
 
@@ -744,14 +773,14 @@ const response =
           }
 
           loginForm.reset();
+saveSession(data.session);
+showSession(data.session);
 
-          saveSession(data.session);
-          showSession(data.session);
+deviceApproved = false;
+hideProtectedNotes();
 
-          await loadNotes(data.session);
-
-          authMessage.textContent =
-            '로그인되었습니다.';
+authMessage.textContent =
+  '로그인되었습니다.';
         } catch (error) {
           authMessage.textContent =
             `로그인 실패: ${error.message}`;
@@ -788,10 +817,12 @@ const response =
             }
           }
 
-          saveSession(null);
-          showSession(null);
+saveSession(null);
+deviceApproved = false;
+clearDevice();
+showSession(null);
 
-          await loadNotes(null);
+showNoteMessage('로그인 및 기기 승인 후 메모를 확인할 수 있습니다.');
 
           authMessage.textContent =
             '로그아웃되었습니다.';
@@ -810,9 +841,9 @@ const response =
         const headers =
           authorizationHeaders();
 
-        if (!headers) {
+        if (!headers || !deviceApproved) {
           noteMessage.textContent =
-            '로그인이 필요합니다.';
+            '기기 승인이 필요합니다.';
           return;
         }
 
@@ -898,51 +929,29 @@ const response = await fetch(path, {
     );
 
     async function restoreSession() {
-      const storedSession =
-        readStoredSession();
-
+      const storedSession = readStoredSession();
+      deviceApproved = false;
+      hideProtectedNotes();
       if (!storedSession?.refresh_token) {
         showSession(null);
-        await loadNotes(null);
         return;
       }
 
       try {
-        const response =
-          await fetch('/api/auth-refresh', {
-            method: 'POST',
-            headers: {
-              'Content-Type':
-                'application/json'
-            },
-            body: JSON.stringify({
-              refresh_token:
-                storedSession.refresh_token
-            })
-          });
-
-        const data =
-          await readJson(response);
-
-        if (
-          !response.ok ||
-          !data.session
-        ) {
-          throw new Error(
-            'REFRESH_FAILED'
-          );
-        }
-
+        const response = await fetch('/api/auth-refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: storedSession.refresh_token })
+        });
+        const data = await readJson(response);
+        if (!response.ok || !data.session) throw new Error('REFRESH_FAILED');
         saveSession(data.session);
-showSession(data.session);
-showNoteMessage('기기 승인 후 메모를 확인할 수 있습니다.');
-
-showNoteMessage('기기 승인 후 메모를 확인할 수 있습니다.');
-} catch {
-  saveSession(null);
-  showSession(null);
-  await loadNotes(null);
-}
+        showSession(data.session);
+      } catch {
+        saveSession(null);
+        showSession(null);
+      }
+    }
 
     await restoreSession();
   </script>
