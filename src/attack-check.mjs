@@ -2,7 +2,7 @@
  // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (![5, 6, 7, 8, 9, 10].includes(config.step)) {
+if (![5, 6, 7, 8, 9, 10, 11].includes(config.step)) {
   throw new Error(
     '5~9단계 공격 점검에 맞게 aleph.config.json의 step을 확인해 주세요.'
   );
