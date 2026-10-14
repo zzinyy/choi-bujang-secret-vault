@@ -1,4 +1,3 @@
-
 import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../../../src/verify-login.mjs';
@@ -144,7 +143,7 @@ export default async function handler(request, response) {
 
     const { data: current, error: currentError } = await supabase
       .from('notes')
-      .select('id, owner_id')
+      .select('id, owner_id, title, content')
       .eq('id', id)
       .maybeSingle();
 
@@ -167,11 +166,26 @@ export default async function handler(request, response) {
       });
     }
 
+    const plan = {
+      backup_id: backup.id,
+      backup_title_sha256: sha256(backup.title),
+      backup_content_sha256: backup.content_sha256,
+      current_exists: Boolean(current),
+      current_title_sha256: current ? sha256(current.title ?? '') : null,
+      current_content_sha256: current ? sha256(current.content ?? '') : null,
+      changes: {
+        recreate: !current,
+        title: !current || current.title !== backup.title,
+        content: !current || current.content !== backup.content
+      }
+    };
+
     await writeAudit(supabase, 'note_restore', 'started', {
       note_id: id,
       owner_id: login.userId,
       backup_id: backup.id,
-      content_sha256: backup.content_sha256
+      content_sha256: backup.content_sha256,
+      plan
     });
 
     let restored;
@@ -254,7 +268,8 @@ export default async function handler(request, response) {
       id: restored.id,
       owner_id: restored.owner_id,
       content_sha256: restoredHash,
-      backup_id: backup.id
+      backup_id: backup.id,
+      plan
     });
   } catch (error) {
     if (error.message === 'NOTE_RESTORE_AUDIT_FAILED') {
