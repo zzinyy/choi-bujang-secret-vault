@@ -12,14 +12,19 @@ const content = 'B 계정의 백업된 테스트 메모';
 const hash = value =>
   createHash('sha256').update(value, 'utf8').digest('hex');
 
-const initialBackup = () => ({
-  id: 1,
-  note_id: NOTE_ID,
-  owner_id: USER_B,
-  title: 'B 계정 시험 메모 수정',
-  content,
-  content_sha256: hash(content)
-});
+const initialBackup = () => {
+  const title = 'B 怨꾩젙 ?쒗뿕 硫붾え ?섏젙';
+
+  return {
+    id: 2,
+    note_id: NOTE_ID,
+    owner_id: USER_B,
+    title,
+    content,
+    content_sha256: hash(content),
+    snapshot_sha256: hash(`${title}\n${content}`)
+  };
+};
 
 let state;
 

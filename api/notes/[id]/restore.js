@@ -102,7 +102,7 @@ export default async function handler(request, response) {
   try {
     const { data: backup, error: backupError } = await supabase
       .from('stage10_note_backups')
-      .select('id, note_id, owner_id, title, content, content_sha256')
+      .select('id, note_id, owner_id, title, content, content_sha256, snapshot_sha256')
       .eq('note_id', id)
       .eq('owner_id', login.userId)
       .order('created_at', { ascending: false })
@@ -127,6 +127,8 @@ export default async function handler(request, response) {
       || typeof backup.title !== 'string'
       || typeof backup.content !== 'string'
       || sha256(backup.content) !== backup.content_sha256
+      || typeof backup.snapshot_sha256 !== 'string'
+      || sha256(`${backup.title}\n${backup.content}`) !== backup.snapshot_sha256
     ) {
       await writeAudit(supabase, 'note_restore', 'fail', {
         note_id: id,

@@ -39,6 +39,9 @@ export function deploymentIdentity(env, config) {
     judgeIssuer: config.judgeIssuer,
     sampleMarker: config.sampleMarker,
     allowedRoutes: config.allowedRoutes,
+    ...(config.step >= 10
+      ? { restoreRoute: config.restoreRoute }
+      : {}),
     originalApiUrl: config.originalApiUrl,
   };
 }
