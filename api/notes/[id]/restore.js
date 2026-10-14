@@ -39,6 +39,16 @@ async function writeAudit(supabase, action, outcome, details) {
   }
 }
 
+async function tryAudit(supabase, outcome, details) {
+  try {
+    await supabase
+      .from('stage10_policy_audit')
+      .insert({ action: 'note_restore', outcome, details });
+  } catch {
+    // Diagnostic only. Never change the response because of it.
+  }
+}
+
 export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store');
 
@@ -115,6 +125,14 @@ export default async function handler(request, response) {
     }
 
     if (!backup) {
+      await tryAudit(supabase, 'fail', {
+        note_id: id,
+        owner_id: login.userId,
+        kind: login.kind,
+        identity: login.identity ?? null,
+        reason: 'backup_not_found'
+      });
+
       return respond(response, 404, {
         error: 'VERIFIED_NOTE_BACKUP_NOT_FOUND'
       });
