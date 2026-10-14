@@ -1,5 +1,23 @@
 # BYTE BACK 방어전 시작 틀 R5
 
+## 보너스 xdr-03 · 알려진 취약점 악용
+
+`xdr/known-cve/decide.mjs`는 import·입출력·인터넷 없이 경보 하나를 분류합니다.
+요청의 완전한 원격 JNDI 조회는 block, 불완전한 단서와 중간 수준 취약점 경보는 alert,
+악용 신호가 없는 정상 경보는 record입니다. 경보 ID나 시험 정답을 판단 조건으로 쓰지 않습니다.
+근거는 [Apache CVE-2021-44228](https://logging.apache.org/security.html#CVE-2021-44228)과
+[MITRE ATT&CK T1190](https://attack.mitre.org/techniques/T1190/)입니다.
+
+실행: `npm run xdr:run -- known-cve` → `xdr/known-cve/result.json`.
+경보 읽기: `node xdr/known-cve/read-alerts.mjs`.
+차단 후보/알림 생성: `node xdr/known-cve/respond.mjs`.
+기존 ZTNA 규칙은 유지하며 respond의 applyDenyRules를 검증된 전송 출처와 기존 판정 뒤에 적용합니다.
+거부 규칙은 15분 후 만료하며 근거 경보 번호를 포함합니다. 미확인 출처·정상 출처·만료 규칙은 기존 판정을 유지합니다.
+로그에는 경보 번호와 고정 패턴명만 남기고 본문·토큰은 저장하지 않습니다.
+이 연결은 로컬 어댑터 시험이며 운영 ALEPH SDP 엔진 등록이나 실시간 차단 완료를 주장하지 않습니다.
+중지하려면 어댑터 호출을 중지합니다. 기존 판정기는 수정하지 않아 자체 기능이 유지됩니다.
+재시험은 위 명령으로 결과를 다시 만들면 됩니다. 원본 fixtures는 변경하지 않습니다.
+
 현재 작업 단계는 12입니다. 제공 엔진은 **ALEPH SDP 엔진**이며 학생 작성 판정기·탐지 규칙·접속 앱·자료실과 구분합니다.
 12단계 현재 상태와 실제 점검 방법은 [docs/STAGE12_EVIDENCE.md](docs/STAGE12_EVIDENCE.md)를 따릅니다.
 아래 이전 단계 설명은 단계별 제작 이력입니다.

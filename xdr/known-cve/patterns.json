@@ -1,0 +1,8 @@
+{
+  "schema": "student.xdr.patterns.v1",
+  "patterns": [
+    { "name": "log4shell.remote-jndi", "confidence": 0.97, "condition": "HTTP 머리글·인자·본문의 완전한 원격 JNDI 조회 구문", "evidence": "Apache CVE-2021-44228은 공격자 제어 LDAP 등 JNDI 대상에 대한 조회를 악용한다.", "sourceUrl": "https://logging.apache.org/security.html#CVE-2021-44228" },
+    { "name": "log4shell.lookup-fragment", "confidence": 0.65, "condition": "불완전한 JNDI 구문 또는 알려진 Log4Shell 점검 흔적", "evidence": "MITRE T1190의 외부 노출 앱 악용 시도와 관련된 후보이며 불완전한 흔적만으로 성공이나 악성 여부를 확정하지 않는다.", "sourceUrl": "https://attack.mitre.org/techniques/T1190/" },
+    { "name": "log4shell.weak-indicator", "confidence": 0.55, "condition": "중간 수준 경보에 CVE·JNDI·취약점 점검 관련 단서가 있지만 완전한 악용 구문은 없음", "evidence": "CVE 이름·도구 이름·경보 수준만으로 원격 조회 악용을 입증할 수 없으므로 알림만 남긴다.", "sourceUrl": "https://logging.apache.org/security.html#CVE-2021-44228" }
+  ]
+}
