@@ -16,6 +16,16 @@ function getVerifier(supabaseSecretKey) {
   return verifyLogin;
 }
 
+function makeClient(url, key) {
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  });
+}
+
 function isUuid(value) {
   return typeof value === 'string'
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value);
@@ -68,6 +78,8 @@ export default async function handler(request, response) {
     });
   }
 
+  const auditClient = makeClient(supabaseUrl, supabaseSecretKey);
+
   let login;
 
   try {
@@ -75,12 +87,24 @@ export default async function handler(request, response) {
       request.headers.authorization
     );
   } catch {
+    await tryAudit(auditClient, 'fail', {
+      reason: 'login_exception',
+      has_auth_header: Boolean(request.headers.authorization),
+      note_id: request.query?.id ?? null
+    });
+
     return respond(response, 401, {
       error: 'UNAUTHORIZED'
     });
   }
 
   if (!login || !['student', 'judge'].includes(login.kind)) {
+    await tryAudit(auditClient, 'fail', {
+      reason: 'login_rejected',
+      has_auth_header: Boolean(request.headers.authorization),
+      note_id: request.query?.id ?? null
+    });
+
     return respond(response, 401, {
       error: 'UNAUTHORIZED'
     });
@@ -91,22 +115,18 @@ export default async function handler(request, response) {
     : request.query?.id;
 
   if (!isUuid(id)) {
+    await tryAudit(auditClient, 'fail', {
+      reason: 'invalid_note_id',
+      kind: login.kind,
+      raw_id: typeof id === 'string' ? id.slice(0, 64) : null
+    });
+
     return respond(response, 400, {
       error: 'INVALID_NOTE_ID'
     });
   }
 
-  const supabase = createClient(
-    supabaseUrl,
-    supabaseSecretKey,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false
-      }
-    }
-  );
+  const supabase = makeClient(supabaseUrl, supabaseSecretKey);
 
   try {
     const { data: backup, error: backupError } = await supabase
