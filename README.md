@@ -1,5 +1,24 @@
 # BYTE BACK 방어전 시작 틀 R5
 
+## 보너스 xdr-05 · 권한 가로채기
+
+`xdr/privilege/decide.mjs`는 import·입출력·네트워크 없는 독립 판단 모듈입니다.
+관리자 그룹 추가와 원격 출처·명령 사용·대량 추가·재획득의 결합,
+새 권한과 명령 사용, 낯선 상승 세션, 타 계정 권한 사용을 확인합니다.
+취소·실패·일반 그룹 변경·승인된 관리 작업은 자동 차단하지 않습니다.
+근거는 [MITRE T1068](https://attack.mitre.org/techniques/T1068/)과
+[T1078](https://attack.mitre.org/techniques/T1078/)이며 특정 취약점 악용 성공을 추정하지 않습니다.
+
+시험: `npm run xdr:run -- privilege` → `xdr/privilege/result.json`.
+경보 읽기: `node xdr/privilege/read-alerts.mjs`.
+회수 후보 생성: `node xdr/privilege/respond.mjs`.
+respond의 추가 게이트는 검증된 PC·계정·전송 출처가 모두 같은 접속만 대상으로 합니다.
+경보의 계정명과 엔진 가명 subjectId를 직접 비교하지 않으며 신뢰된 계정 매핑은 호출자가 제공해야 합니다.
+로그에는 경보 번호·고정 패턴명만 남기고 원본 경보는 보존합니다.
+후보 규칙은 15분 뒤 만료하며 기존 거부·정상 계정·미확인 출처 판정을 유지합니다.
+실제 세션 삭제·토큰 무효화나 운영 ALEPH SDP 엔진 등록 완료를 뜻하지 않습니다.
+중지는 게이트 호출 중지, 재실행은 위 시험과 후보 생성 명령을 사용합니다.
+
 ## 보너스 xdr-04 · 몰래 심어진 프로그램
 
 `xdr/persistence/decide.mjs`는 독립 오프라인 판단 모듈입니다. 서명 없는 서비스와 임시 실행 파일,
