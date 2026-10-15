@@ -1,5 +1,25 @@
 # BYTE BACK 방어전 시작 틀 R5
 
+## 보너스 xdr-04 · 몰래 심어진 프로그램
+
+`xdr/persistence/decide.mjs`는 독립 오프라인 판단 모듈입니다. 서명 없는 서비스와 임시 실행 파일,
+낯선 예약 작업과 임시 실행 파일, 기준 목록에 없는 시작 폴더 실행 파일 추가 등 결합 증거를 확인합니다.
+서명 미확인·임시 파일·수준 수치만으로 차단하지 않으며 불확실한 변경은 alert로 남깁니다.
+기준 목록 여부는 경보가 확인해 준 경우만 사용하며 자체적으로 기준 목록을 만들어 채우지 않습니다.
+근거: [MITRE T1543](https://attack.mitre.org/techniques/T1543/),
+[T1053](https://attack.mitre.org/techniques/T1053/),
+[T1547.001](https://attack.mitre.org/techniques/T1547/001/).
+
+시험: `npm run xdr:run -- persistence` → `xdr/persistence/result.json`.
+읽기 확인: `node xdr/persistence/read-alerts.mjs`.
+대응 후보: `node xdr/persistence/respond.mjs`.
+respond의 applyDenyRules는 검증된 전송 출처의 해당 PC 접속에만 적용하는 추가 어댑터입니다.
+기존 판정기의 다섯 응답 항목과 RULE_IDS를 지키고 기존 거부를 허용으로 바꾸지 않습니다.
+차단 후보는 근거 경보 번호를 포함하며 15분 후 만료됩니다. 정상·미확인 출처에는 적용하지 않습니다.
+로그는 경보 번호·고정 패턴명만 기록합니다. 원본 경보와 기존 판정기는 보존합니다.
+중지 시 어댑터 호출을 중지하고, 재시작 시 위 시험·대응 명령으로 재생성합니다.
+이는 가상 경보와 로컬 연결 시험이며 운영 엔진 등록이나 실제 PC 격리 완료를 뜻하지 않습니다.
+
 ## 보너스 xdr-03 · 알려진 취약점 악용
 
 `xdr/known-cve/decide.mjs`는 import·입출력·인터넷 없이 경보 하나를 분류합니다.

@@ -1,0 +1,9 @@
+{
+  "schema": "student.xdr.patterns.v1",
+  "patterns": [
+    { "name": "persistence.unsigned-service", "confidence": 0.96, "condition": "서명 없는 서비스와 임시 실행 파일·실행 파일 변경·반복 등록 중 하나가 결합", "evidence": "MITRE T1543의 서비스 생성·변경 기반 지속 실행에 대응한다.", "sourceUrl": "https://attack.mitre.org/techniques/T1543/" },
+    { "name": "persistence.suspicious-task", "confidence": 0.94, "condition": "낯선 예약 작업이 임시 파일을 실행하거나 시작 항목과 같은 임시 파일을 공유", "evidence": "MITRE T1053은 작업 예약 기능을 악용한 반복 실행을 설명한다.", "sourceUrl": "https://attack.mitre.org/techniques/T1053/" },
+    { "name": "persistence.unknown-startup", "confidence": 0.92, "condition": "기준 목록에 없다고 확인된 실행 파일이 시작 폴더에 추가", "evidence": "시작 폴더의 실행 파일 등록은 MITRE T1547.001의 자동 실행 지속성 수단이다.", "sourceUrl": "https://attack.mitre.org/techniques/T1547/001/" },
+    { "name": "persistence.needs-review", "confidence": 0.6, "condition": "서비스·작업·시작 항목·무결성 경보가 있으나 결합 증거가 부족", "evidence": "정상 관리 작업도 같은 기능을 쓰므로 서명 미확인이나 수준 수치만으로 차단하지 않는다.", "sourceUrl": "https://attack.mitre.org/techniques/T1543/" }
+  ]
+}

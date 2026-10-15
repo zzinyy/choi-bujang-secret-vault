@@ -7,3 +7,4 @@ artifacts/submission.json
 artifacts/operations-probe.json
 xdr/alerts.log
 xdr/known-cve/deny-rules.json
+xdr/persistence/deny-rules.json
