@@ -1,0 +1,10 @@
+{
+  "schema":"student.xdr.patterns.v1",
+  "policy":{"largeBytes":50000000,"repeatCount":5,"note":"숫자는 이 자료실의 로컬 정책이며 MITRE 공식 임계값이 아니다."},
+  "patterns":[
+    {"name":"exfiltration.large-unfamiliar","confidence":0.96,"condition":"낯선 목적지라고 확인된 곳으로 50MB 이상 전송","evidence":"T1041/T1048은 명령 통로나 다른 프로토콜을 통한 유출을 설명하며 목적지와 전송량을 결합해 조사한다.","sourceUrl":"https://attack.mitre.org/techniques/T1041/"},
+    {"name":"exfiltration.correlated-transfer","confidence":0.94,"condition":"50MB 이상 전송과 5회 이상 반복·낯선 포트·외부 전체 복사 중 하나 결합","evidence":"T1048의 외부 전송 조사에 대응하며 프로토콜 이름이나 전송량만으로 유출을 단정하지 않는다.","sourceUrl":"https://attack.mitre.org/techniques/T1048/"},
+    {"name":"exfiltration.offhours-archive","confidence":0.92,"condition":"업무 시간 밖에 압축 파일이 낯선 목적지로 실제 전송","evidence":"T1048을 참고한 결합 신호로 미전송 압축 파일은 차단하지 않는다.","sourceUrl":"https://attack.mitre.org/techniques/T1048/"},
+    {"name":"exfiltration.needs-review","confidence":0.6,"condition":"단일 전송 이상·압축·실패 경보 등 확정 증거 부족","evidence":"백업·동기화도 같은 기능을 쓰므로 불확실한 사건은 알림만 남긴다.","sourceUrl":"https://attack.mitre.org/techniques/T1041/"}
+  ]
+}

@@ -1,5 +1,24 @@
 # BYTE BACK 방어전 시작 틀 R5
 
+## 보너스 xdr-06 · 자료 빼돌리기
+
+`xdr/exfiltration/decide.mjs`는 외부 import·입출력·인터넷 없는 독립 판단 모듈입니다.
+낯선 목적지와 대용량 전송, 반복 전송·낯선 포트·외부 전체 복사,
+업무 시간 밖의 압축 파일 반출을 함께 판단합니다. 전송량 하나만으로 차단하지 않습니다.
+50MB와 반복 5회는 이 자료실의 로컬 정책이며 MITRE 공식 임계값이 아닙니다.
+근거: [MITRE T1041](https://attack.mitre.org/techniques/T1041/) 및
+[T1048](https://attack.mitre.org/techniques/T1048/).
+실패·미전송·승인된 전송·평소 목적지로의 전송은 자동 차단하지 않고 단서를 알림으로 남깁니다.
+
+시험: `npm run xdr:run -- exfiltration` → `xdr/exfiltration/result.json`.
+읽기: `node xdr/exfiltration/read-alerts.mjs`.
+대응 후보: `node xdr/exfiltration/respond.mjs`.
+추가 게이트는 검증된 PC 및 목적지 IP가 일치하는 전송에만 적용하며 다른 목적지나 PC는 차단하지 않습니다.
+후보에는 근거 경보 번호·15분 만료가 있고 기존 판정기의 형식과 규칙을 유지합니다.
+로그에는 경보 번호·고정 패턴명만 남기며 메모·파일 본문을 읽거나 전송하지 않습니다.
+이는 로컬 연결 어댑터 시험이며 실제 네트워크 방화벽 차단 또는 ALEPH SDP 엔진 등록 완료가 아닙니다.
+중지는 게이트 호출 중지, 재시험은 위 실행 명령으로 결과와 후보를 다시 생성합니다.
+
 ## 보너스 xdr-05 · 권한 가로채기
 
 `xdr/privilege/decide.mjs`는 import·입출력·네트워크 없는 독립 판단 모듈입니다.
